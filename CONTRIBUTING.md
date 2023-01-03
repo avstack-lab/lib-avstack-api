@@ -1,6 +1,6 @@
 # Contributing
 
-Following the [kitto][kitti] guidelines.
+Following the [kitto][kitto] guidelines.
 
 If you discover issues, have ideas for improvements or new features,
 please report them to the [issue tracker][issue-tracker] of the repository or
