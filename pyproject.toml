@@ -1,0 +1,39 @@
+[tool.poetry]
+name = "lib-avstack-api"
+version = "0.1.0-alpha.1"
+description = "API library for autonomous vehicle development"
+authors = ["Spencer Hallyburton <spencer.hallyburton@duke.edu>"]
+readme = "README.md"
+license = "Apache-2.0"
+homepage = "https://avstack.org"
+repository = "https://github.com/avstack-lab/lib-avstack-api"
+keywords = ["kitti", "nuscenes", "waymo", "carla"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+]
+packages = [{include = "avapi"}]
+include = ["CHANGELOG.md"]
+
+[tool.poetry.dependencies]
+python = "~3.8"
+tabulate = "~0.9.0"
+nuscenes-devkit = "~1.1.9"
+lib-avstack-core = { path = "../lib-avstack-core", develop = true }
+trackeval = { path = "./third_party/TrackEval", develop = true }
+
+[tool.poetry.group.test.dependencies]
+pytest = "^7"
+pytest-cov = "^4"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q -s -l"
+testpaths = [
+    "tests",
+    "integration",
+]
