@@ -92,7 +92,7 @@ Logo by [Sydney Jeffs](https://twitter.com/sydney_jeffs).
 
 
 
-
+[poetry]: https://github.com/python-poetry/poetry
 [avstack-core]: https://github.com/avstack-lab/lib-avstack-core
 [avstack-preprint]: todo
 [carla-sandbox]: https://github.com/avstack-lab/carla-sandbox
