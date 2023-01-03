@@ -1,6 +1,6 @@
 # Contributing
 
-Following the [kitto][https://github.com/kittoframework/kitto] guidelines.
+Following the [kitto][kitti] guidelines.
 
 If you discover issues, have ideas for improvements or new features,
 please report them to the [issue tracker][issue-tracker] of the repository or
@@ -35,6 +35,8 @@ do so.
 * Open a [pull request][using-pull-requests] that relates to *only* one subject 
   with a clear title and description in grammatically correct, complete sentences.
 
+
+[kitto]: https://github.com/kittiframework/kitto
 [issue-tracker]: https://github.com/avstack-lab/lib-avstack-api/issues
 [fork-how]: http://gun.io/blog/how-to-github-fork-branch-and-pull-request
 [git-style-guide]: https://github.com/agis-/git-style-guide
