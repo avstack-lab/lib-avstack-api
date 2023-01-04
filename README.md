@@ -1,6 +1,6 @@
 # AVstack API
 
-This is the API library of `AVstack`.  It relies on both [`avstack-core`][avstack-core] and having access to integrated datasets/simulators. This accompanies the preprint [HERE][avstack-preprint].
+This is the API library of `AVstack`.  It relies on both [`avstack-core`][avstack-core] and having access to integrated datasets/simulators. [This preprint][avstack-preprint] accompanies the repository.
 
 ## Philosophy
 
@@ -91,8 +91,7 @@ limitations under the License.
 Logo by [Sydney Jeffs](https://twitter.com/sydney_jeffs).
 
 
-
 [poetry]: https://github.com/python-poetry/poetry
 [avstack-core]: https://github.com/avstack-lab/lib-avstack-core
-[avstack-preprint]: todo
+[avstack-preprint]: https://arxiv.org/pdf/2212.13857.pdf
 [carla-sandbox]: https://github.com/avstack-lab/carla-sandbox
