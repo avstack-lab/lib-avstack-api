@@ -61,7 +61,7 @@ class nuScenesManager(_nuManager):
 
 
 class nuScenesSceneDataset(_nuBaseDataset):
-    NAME = 'nuScenes'
+    name = 'nuScenes'
     CFG = {}
     CFG['num_lidar_features'] = 5
     CFG['IMAGE_WIDTH'] = 1600
