@@ -1,5 +1,10 @@
 #!/bin/bash
 
+set -e
+
+SAVEFOLDER="${1:-"./KITTI/raw"}"
+SAVEFOLDER=${SAVEFOLDER%/}  # remove trailing slash
+
 files=(2011_09_26_calib.zip
 2011_09_26_drive_0001
 2011_09_26_drive_0002
@@ -162,24 +167,22 @@ files=(2011_09_26_calib.zip
 2011_10_03_drive_0047
 2011_10_03_drive_0058)
 
-mkdir -p KITTI/raw
-cd KITTI/raw
+mkdir -p "$SAVEFOLDER"
 
-for i in ${files[@]}; do
-        if [ ${i:(-3)} != "zip" ]
+for FILE in ${files[@]}; do
+        if [ ${FILE:(-3)} != "zip" ]
         then
-                shortname=$i'_tracklets.zip'
-                fullname=$i'/'$i'_tracklets.zip'
+                shortname="${FILE}_tracklets.zip"
+                fullname="${FILE}/${FILE}_tracklets.zip"
         else
                 continue
         fi
         echo "Downloading: "$shortname
-        wget 'https://s3.eu-central-1.amazonaws.com/avg-kitti/raw_data/'$fullname
+        wget -P "$SAVEFOLDER" "https://s3.eu-central-1.amazonaws.com/avg-kitti/raw_data/${fullname}"
         if [ $? -eq 0 ]; then
-                unzip -o $shortname
-                rm $shortname
+                unzip -o "$SAVEFOLDER/$shortname" -d "$SAVEFOLDER"
+                rm "${SAVEFOLDER}/${shortname}"
         else
                 echo "This download failed!!!"
         fi
 done
-cd ../..

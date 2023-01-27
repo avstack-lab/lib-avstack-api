@@ -1,5 +1,10 @@
 #!/bin/bash
 
+set -e
+
+SAVEFOLDER="${1:-"./KITTI/raw"}"
+SAVEFOLDER=${SAVEFOLDER%/}  # remove trailing slash
+
 files=(2011_09_26_calib.zip
 2011_09_26_drive_0001
 2011_09_26_drive_0002
@@ -162,22 +167,19 @@ files=(2011_09_26_calib.zip
 2011_10_03_drive_0047
 2011_10_03_drive_0058)
 
+mkdir -p "$SAVEFOLDER"
 
-mkdir -p KITTI/raw
-cd KITTI/raw
-
-for i in ${files[@]}; do
-        if [ ${i:(-3)} != "zip" ]
+for FILE in ${files[@]}; do
+        if [ ${FILE:(-3)} != "zip" ]
         then
-                shortname=$i'_sync.zip'
-                fullname=$i'/'$i'_sync.zip'
+                shortname="${FILE}_sync.zip"
+                fullname="${FILE}/${FILE}_sync.zip"
         else
-                shortname=$i
-                fullname=$i
+                shortname="$FILE"
+                fullname="$FILE"
         fi
-	echo "Downloading: "$shortname
-        wget 'https://s3.eu-central-1.amazonaws.com/avg-kitti/raw_data/'$fullname
-        unzip -o $shortname
-        rm $shortname
+	echo "Downloading: ${shortname}"
+        wget -P "$SAVEFOLDER" "https://s3.eu-central-1.amazonaws.com/avg-kitti/raw_data/${fullname}"
+        unzip -o "$SAVEFOLDER/$shortname" -d "$SAVEFOLDER"
+        rm "${SAVEFOLDER}/${shortname}"
 done
-cd ../..

@@ -29,28 +29,33 @@ To make use of the power of the `AVstack` API, you must download and organize so
 - **Option 1:** Use the full path to an existing download of the data.
 - **Option 2:** Use the utilities in the `data` folder to download a copy of the data. This is described below.
 
+If you chose to use an existing download *or* you choose to download the data in a non-default location, it may benefit you to create a symbolic link to the default location (see [add_custom_symlinks.sh](https://github.com/avstack-lab/lib-avstack-api/blob/main/data/add_custom_symlinks.sh)). The examples will use links assuming they are in the `data` folder. Therefore, to make these work as seamlessly as possible, add the symbolic links.
+
 *all code is relative to data folder*
 
 #### KITTI
 
-##### Object Dataset
-*this is optional - you can do your own download elsewhere*
+##### ImageSets
+You need the imagesets for the `object` dataset. You also need it for the `raw` dataset because of the way we implicitly convert the raw format to the object format under the hood (see [test-kitti-api.ipynb](https://github.com/avstack-lab/lib-avstack-api/blob/main/notebooks/test-kitti-api.ipynb)).
 ```
-./download_KITTI_object_data.sh
+./download_KITTI_ImageSets.sh /path/to/save/kitti  # default is ./KITTI/object
+```
+
+##### Object Dataset
+```
+./download_KITTI_object_data.sh /path/to/save/kitti  # default is ./KITTI/object
 ```
 
 ##### Raw Data
-*this is optional - you can do your own download elsewhere*
 ```
-./download_KITTI_raw_tracklets.sh
-./download_KITTI_raw_data.sh
+./download_KITTI_raw_tracklets.sh /path/to/save/kitti  # default is ./KITTI/raw
+./download_KITTI_raw_data.sh  /path/to/save/kitti  # default is ./KITTI/raw
 ```
 Some of the tracklet downloads may fail. This is not a problem.
 
 #### nuScenes mini
-*this is optional - you can do your own download elsewhere*
 ```
-./download_nuScenes_mini.sh
+./download_nuScenes_mini.sh /path/to/save/nuScenes # default is ./nuScenes
 ```
 
 #### nuScenes, nuImages, Waymo
