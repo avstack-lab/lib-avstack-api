@@ -8,16 +8,13 @@
 
 """
 
-import os
-import sys
-
 import numpy as np
 import cv2
 from PIL import Image
 from copy import copy, deepcopy
 
 from avapi.evaluation import parse_color_string
-from avstack.geometry import bbox, Box2D, Box3D
+from avstack.geometry import bbox, Box2D, Box3D, NominalOriginStandard
 from avstack.modules.perception.detections import BoxDetection, MaskDetection
 from avstack.datastructs import DataContainer
 from avstack.objects import VehicleState
@@ -223,7 +220,7 @@ def show_objects_on_image(img, objects, projection='2d', **kwargs):
     elif projection == '3d':
         boxes = [obj.box3d for obj in objects]
     else:
-        raise NotImplementedError(show)
+        raise NotImplementedError(projection)
     return show_image_with_boxes(img, boxes, **kwargs)
 
 
@@ -236,7 +233,6 @@ def show_lidar_bev_with_boxes(point_cloud, boxes=[], extent=None, ground=None,
 
     :point_cloud - lidar in the lidar frame
     """
-    import matplotlib.pyplot as plt
     if type(boxes) == list:
         boxes = np.asarray(boxes)
     elif type(boxes) != np.ndarray:
@@ -249,6 +245,8 @@ def show_lidar_bev_with_boxes(point_cloud, boxes=[], extent=None, ground=None,
         pc2 = point_cloud[point_filter,:]
 
         # Filter labels outside extent
+        for box in boxes:
+            box.change_origin(NominalOriginStandard)
         box_filter = maskfilters.filter_boxes_extent(boxes, extent)
         boxes = boxes[box_filter]
         if type(box_colors) in [list, np.ndarray]:

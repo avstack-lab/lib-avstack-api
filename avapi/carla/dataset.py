@@ -7,16 +7,13 @@
 """
 CARLA dataset manager on AVstack conventions
 """
-import hashlib
-import os, sys, glob
+import os, glob
 import numpy as np
 from cv2 import imread, imwrite
 
 from ..dataset import BaseSceneDataset, BaseSceneManager
 from avstack import calibration
 from avstack.geometry import Origin, q_mult_vec
-from avstack.utils import maskfilters
-from avstack import transformations as tforms
 
 
 def check_xor_for_none(a, b):
@@ -80,7 +77,7 @@ class CarlaSceneDataset(BaseSceneDataset):
     sensors = {'main_lidar':'LIDAR_TOP', 'lidar':'LIDAR_TOP', 'main_camera':'CAM_FRONT'}
 
     def __init__(self, data_dir, scene, whitelist_types=_nominal_whitelist_types,
-            ignore_types=_nominal_ignore_types, verbose=False):
+            ignore_types=_nominal_ignore_types):
         self.data_dir = data_dir
         self.scene = scene
         self.sequence_id = scene
@@ -91,7 +88,6 @@ class CarlaSceneDataset(BaseSceneDataset):
         self.obj_local_folder =  os.path.join(self.scene_path, 'objects_sensor')
         ego_files = {'timestamp':{}, 'frame':{}}
         npc_files = {'timestamp':{}, 'frame':{}}
-        npc_files_sensor = {}
         ego_frame_to_ts = {}
         npc_frame_to_ts = {}
         for filename in sorted(glob.glob(os.path.join(self.obj_folder, '*.txt'))):
@@ -153,7 +149,8 @@ class CarlaSceneDataset(BaseSceneDataset):
         self.sensor_frame_to_ts = sensor_frame_to_ts
         self.sensor_frames = sensor_frames
         self.file_endings = file_endings
-        super().__init__(sensor_IDs, whitelist_types, ignore_types)
+        self.sensor_IDs = sensor_IDs
+        super().__init__(whitelist_types, ignore_types)
 
     @property
     def frames(self):
@@ -278,7 +275,7 @@ class CarlaSceneDataset(BaseSceneDataset):
             print(filepath)
             raise e
 
-    def _load_lidar(self, frame, sensor, filter_front):
+    def _load_lidar(self, frame, sensor, filter_front, with_panoptic=False):
         timestamp = None
         filepath = self.get_sensor_file(frame, timestamp, sensor, 'data') + self.file_endings[sensor]
         assert os.path.exists(filepath), filepath
