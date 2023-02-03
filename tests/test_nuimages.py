@@ -1,17 +1,20 @@
 """
 
 """
-import os, logging
+import logging
+import os
+
 import numpy as np
+
 from avapi.nuimages import nuImagesDataset
 
 
-nuImages_data_dir = os.path.join(os.getcwd(), 'data/nuImages')
-if os.path.exists(os.path.join(nuImages_data_dir, 'v1.0-mini')):
-    NID = nuImagesDataset(nuImages_data_dir, 'v1.0-mini')
+nuImages_data_dir = os.path.join(os.getcwd(), "data/nuImages")
+if os.path.exists(os.path.join(nuImages_data_dir, "v1.0-mini")):
+    NID = nuImagesDataset(nuImages_data_dir, "v1.0-mini")
 else:
     NID = None
-    msg = 'Cannot run test - nuImages mini not downloaded'
+    msg = "Cannot run test - nuImages mini not downloaded"
 
 
 def test_init_newimages_dataset():
@@ -35,7 +38,7 @@ def test_get_image():
     if NID is not None:
         img = NID.get_image(0)
         rec = NID._get_sensor_record(0)
-        assert img.shape == (rec['height'], rec['width'], 3)
+        assert img.shape == (rec["height"], rec["width"], 3)
     else:
         logging.warning(msg)
 
@@ -43,7 +46,7 @@ def test_get_image():
 def test_camera_calibrations():
     if NID is not None:
         frame = 2
-        assert NID.sensor_name(frame) == 'CAM_BACK'
+        assert NID.sensor_name(frame) == "CAM_BACK"
         calib = NID.get_calibration(frame)
         assert abs(calib.origin.x[0]) < 0.2
         assert abs(calib.origin.x[1]) < 0.1

@@ -9,33 +9,34 @@
 """
 
 import math
-import numpy as np
+
 import carla
+import numpy as np
 from avstack import transformations as tforms
-from avstack.geometry import Translation, Vector, Rotation, bbox, NominalOriginStandard
+from avstack.geometry import NominalOriginStandard, Rotation, Translation, Vector, bbox
 from avstack.objects import VehicleState
 
 
 def get_obj_type_from_actor(actor):
-    h = 2*actor.bounding_box.extent.z
-    w = 2*actor.bounding_box.extent.y
-    l = 2*actor.bounding_box.extent.x
-    if 'vehicle' in actor.type_id:
-        n_wheels = actor.attributes['number_of_wheels']
+    h = 2 * actor.bounding_box.extent.z
+    w = 2 * actor.bounding_box.extent.y
+    l = 2 * actor.bounding_box.extent.x
+    if "vehicle" in actor.type_id:
+        n_wheels = actor.attributes["number_of_wheels"]
         if int(n_wheels) == 4:
             if h >= 2:
-                obj_type = 'truck'
+                obj_type = "truck"
             else:
-                obj_type = 'car'
+                obj_type = "car"
         elif int(n_wheels) == 2:
-            if any([mot in actor.type_id for mot in ['harley', 'kawasaki', 'yamaha']]):
-                obj_type = 'motorcycle'
+            if any([mot in actor.type_id for mot in ["harley", "kawasaki", "yamaha"]]):
+                obj_type = "motorcycle"
             else:
-                obj_type = 'bicycle'
+                obj_type = "bicycle"
         else:
             raise NotImplementedError(n_wheels)
-    elif 'walker' in actor.type_id:
-        obj_type = 'pedestrian'
+    elif "walker" in actor.type_id:
+        obj_type = "pedestrian"
         raise NotImplementedError(obj_type)
     else:
         raise NotImplementedError(actors.type_id)
@@ -44,22 +45,28 @@ def get_obj_type_from_actor(actor):
 
 def wrap_actor_to_vehicle_state(t, actor):
     obj_type = get_obj_type_from_actor(actor)
-    h = 2*actor.bounding_box.extent.z
-    w = 2*actor.bounding_box.extent.y
-    l = 2*actor.bounding_box.extent.x
+    h = 2 * actor.bounding_box.extent.z
+    w = 2 * actor.bounding_box.extent.y
+    l = 2 * actor.bounding_box.extent.x
     VS = VehicleState(obj_type, actor.id)
     tf = actor.get_transform()
     v = actor.get_velocity()
     ac = actor.get_acceleration()
-    pos = Translation([tf.location.x, -tf.location.y, tf.location.z], NominalOriginStandard)
+    pos = Translation(
+        [tf.location.x, -tf.location.y, tf.location.z], NominalOriginStandard
+    )
     vel = Vector([v.x, -v.y, v.z], NominalOriginStandard)
     acc = Vector([ac.x, -ac.y, ac.z], NominalOriginStandard)
-    q_OR_to_obj = tforms.transform_orientation(carla_rotation_to_RPY(tf.rotation), 'euler', 'quat')
+    q_OR_to_obj = tforms.transform_orientation(
+        carla_rotation_to_RPY(tf.rotation), "euler", "quat"
+    )
     # q_OR_to_obj = tforms.transform_orientation(carla_rotation_to_RPY(tf.rotation), 'euler', 'quat').conjugate()
 
     av = actor.get_angular_velocity()
     ang = Vector([av.x, -av.y, av.z], NominalOriginStandard)
-    box = bbox.Box3D([h,w,l,pos.vector,q_OR_to_obj], NominalOriginStandard, where_is_t='bottom')
+    box = bbox.Box3D(
+        [h, w, l, pos.vector, q_OR_to_obj], NominalOriginStandard, where_is_t="bottom"
+    )
     att = Rotation(box.q, NominalOriginStandard)
     VS.set(t, pos, box, vel, acc, att, ang)
     return VS
@@ -85,7 +92,7 @@ def carla_rotation_to_RPY(carla_rotation):
 
 def carla_rotation_to_quaternion(carla_rotation):
     rpy = carla_rotation_to_RPY(carla_rotation)
-    return tforms.transform_orientation(rpy, 'euler', 'quat')
+    return tforms.transform_orientation(rpy, "euler", "quat")
 
 
 def carla_location_to_numpy_vector(carla_location):
@@ -98,11 +105,7 @@ def carla_location_to_numpy_vector(carla_location):
     :return: a numpy.array with 3 elements
     :rtype: numpy.array
     """
-    return np.array([
-        carla_location.x,
-        -carla_location.y,
-        carla_location.z
-    ])
+    return np.array([carla_location.x, -carla_location.y, carla_location.z])
 
 
 def numpy_vector_to_carla_location(x):
@@ -110,7 +113,9 @@ def numpy_vector_to_carla_location(x):
 
 
 def quaternion_to_carla_rotation(q):
-    rpy = tforms.transform_orientation(q, 'quat', 'euler')
-    return carla.Rotation(pitch=-180/np.pi*rpy[1],
-                          yaw=-180/np.pi*rpy[2],
-                          roll=180/np.pi*rpy[0])
+    rpy = tforms.transform_orientation(q, "quat", "euler")
+    return carla.Rotation(
+        pitch=-180 / np.pi * rpy[1],
+        yaw=-180 / np.pi * rpy[2],
+        roll=180 / np.pi * rpy[0],
+    )

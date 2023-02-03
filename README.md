@@ -24,42 +24,7 @@ then `lib-avstack-core` must be placed in the same folder as `lib-avstack-api`.
 
 ### Datasets
 
-To make use of the power of the `AVstack` API, you must download and organize some autonomous vehicle datasets. Around the internet, you will find many a number of ways AV developers have chosen to organize their AV datasets. It's important to follow the convention outlined here (or suggest a better one). 
-
-- **Option 1:** Use the full path to an existing download of the data.
-- **Option 2:** Use the utilities in the `data` folder to download a copy of the data. This is described below.
-
-If you chose to use an existing download *or* you choose to download the data in a non-default location, it may benefit you to create a symbolic link to the default location (see [add_custom_symlinks.sh](https://github.com/avstack-lab/lib-avstack-api/blob/main/data/add_custom_symlinks.sh)). The examples will use links assuming they are in the `data` folder. Therefore, to make these work as seamlessly as possible, add the symbolic links.
-
-*all code is relative to data folder*
-
-#### KITTI
-
-##### ImageSets
-You need the imagesets for the `object` dataset. You also need it for the `raw` dataset because of the way we implicitly convert the raw format to the object format under the hood (see [test-kitti-api.ipynb](https://github.com/avstack-lab/lib-avstack-api/blob/main/notebooks/test-kitti-api.ipynb)).
-```
-./download_KITTI_ImageSets.sh /path/to/save/kitti  # default is ./KITTI/object
-```
-
-##### Object Dataset
-```
-./download_KITTI_object_data.sh /path/to/save/kitti  # default is ./KITTI/object
-```
-
-##### Raw Data
-```
-./download_KITTI_raw_tracklets.sh /path/to/save/kitti  # default is ./KITTI/raw
-./download_KITTI_raw_data.sh  /path/to/save/kitti  # default is ./KITTI/raw
-```
-Some of the tracklet downloads may fail. This is not a problem.
-
-#### nuScenes mini
-```
-./download_nuScenes_mini.sh /path/to/save/nuScenes # default is ./nuScenes
-```
-
-#### nuScenes, nuImages, Waymo
-These all require an AWS access key obtained through your login to their website. Just follow the standard download procedure and place somewhere you can identify. 
+See [the dataset README file](https://github.com/avstack-lab/lib-avstack-api/data/README.md)
 
 ### Simulators
 
@@ -72,6 +37,16 @@ See the [carla-sandbox][carla-sandbox] to get started with a development sandbox
 ## Demos
 
 We have provided a few Jupyter notebooks in the `notebooks/` folder. Please refrain from committing large jupyter notebooks in pull requests. Either ignore them or use something like [this approach](https://zhauniarovich.com/post/2020/2020-10-clearing-jupyter-output-p2/).
+
+## Usage Notes
+
+### Git Hooks
+
+To prevent the inflation of the repository due to e.g., image data in the example notebooks, please configure a pre-commit hook to clear the output of the jupyter notebooks. To make this process easier, we've included a `hooks` directory. By running:
+```
+git config core.hooksPath hooks
+```
+in the project root, you can use our pre-made pre-commit hook.
 
 # Contributing
 

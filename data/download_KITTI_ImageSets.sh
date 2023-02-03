@@ -2,21 +2,22 @@
 
 set -e
 
-SAVEFOLDER="${1:-"./KITTI/object"}"
-SAVEFOLDER=${SAVEFOLDER%/}  # remove trailing slash
+DATAFOLDER=${1:-/data/$(whoami)}
+DATAFOLDER=${DATAFOLDER%/}
+DATAFOLDER="${DATAFOLDER}/KITTI/object"
 
-DATAFOLDER="https://avstack-public-data.s3.amazonaws.com/KITTI-ImageSets"
+DOWNLOAD="https://avstack-public-data.s3.amazonaws.com/KITTI-ImageSets"
 
-echo "Downloading KITTI ImageSets - saving to $SAVEFOLDER"
+echo "Downloading KITTI ImageSets - saving to $DATAFOLDER"
 
 files=(test.txt
 train.txt
 trainval.txt
 val.txt)
 
-mkdir -p "$SAVEFOLDER/ImageSets"
+mkdir -p "$DATAFOLDER/ImageSets"
 
 for FILE in ${files[@]}; do
 	echo "Downloading: $FILE"
-        wget -P "$SAVEFOLDER/ImageSets" "$DATAFOLDER/$FILE"
+        wget -P "$DATAFOLDER/ImageSets" "$DOWNLOAD/$FILE"
 done

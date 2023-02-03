@@ -28,6 +28,11 @@ jupyter = "^1.0.0"
 [tool.poetry.group.test.dependencies]
 pytest = "^7"
 pytest-cov = "^4"
+bandit = "^1.7"
+black = "~22.12.0"
+mypy = "^0"
+isort = "^5.11"
+flake8 = "^5.0"
 
 [build-system]
 requires = ["poetry-core"]

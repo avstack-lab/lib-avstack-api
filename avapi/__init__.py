@@ -9,8 +9,7 @@
 """
 
 import avapi.carla
+import avapi.evaluation
 import avapi.kitti
 import avapi.nuscenes
-
-import avapi.evaluation
 import avapi.visualize

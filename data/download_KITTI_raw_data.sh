@@ -2,8 +2,12 @@
 
 set -e
 
-SAVEFOLDER="${1:-"./KITTI/raw"}"
-SAVEFOLDER=${SAVEFOLDER%/}  # remove trailing slash
+
+DATAFOLDER=${1:-/data/$(whoami)}
+MAXFILES=${2:-55}
+
+DATAFOLDER=${DATAFOLDER%/}
+DATAFOLDER="${DATAFOLDER}/KITTI/raw"
 
 files=(2011_09_26_calib.zip
 2011_09_26_drive_0001
@@ -167,7 +171,10 @@ files=(2011_09_26_calib.zip
 2011_10_03_drive_0047
 2011_10_03_drive_0058)
 
-mkdir -p "$SAVEFOLDER"
+mkdir -p "$DATAFOLDER"
+
+echo "Downloading up to $MAXFILES files"
+COUNT=0
 
 for FILE in ${files[@]}; do
         if [ ${FILE:(-3)} != "zip" ]
@@ -179,7 +186,13 @@ for FILE in ${files[@]}; do
                 fullname="$FILE"
         fi
 	echo "Downloading: ${shortname}"
-        wget -P "$SAVEFOLDER" "https://s3.eu-central-1.amazonaws.com/avg-kitti/raw_data/${fullname}"
-        unzip -o "$SAVEFOLDER/$shortname" -d "$SAVEFOLDER"
-        rm "${SAVEFOLDER}/${shortname}"
+        wget -P "$DATAFOLDER" "https://s3.eu-central-1.amazonaws.com/avg-kitti/raw_data/${fullname}"
+        unzip -o "$DATAFOLDER/$shortname" -d "$DATAFOLDER"
+        rm "${DATAFOLDER}/${shortname}"
+        COUNT=$((COUNT+1))
+        echo "Downloaded $COUNT / $MAXFILES files!"
+        if [[ $COUNT -ge $MAXFILES ]]; then
+                echo "Finished downloading $COUNT files"
+                break
+        fi
 done

@@ -11,16 +11,16 @@
 try:
     from leaderboard.autoagents.autonomous_agent import AutonomousAgent
 except ModuleNotFoundError as e:
-    print('Cannot run the leaderboard evaluation')
+    print("Cannot run the leaderboard evaluation")
 
 try:
     from srunner.autoagents.autonomous_agent import Track
 except ModuleNotFoundError as e:
-    print('Scenario runner could not be found')
+    print("Scenario runner could not be found")
 
 
 def get_entry_point():
-    return 'CarlaLeaderboardAgent'
+    return "CarlaLeaderboardAgent"
 
 
 class CarlaLeaderboardAgent(AutonomousAgent):
@@ -47,22 +47,57 @@ class CarlaLeaderboardAgent(AutonomousAgent):
         parent in any axis (e.g. [3.1,0.0,0.0]), the setup will fail
         """
         sensors = [
-            {'type': 'sensor.camera.rgb', 'id': 'Center',
-             'x': 0.7, 'y': 0.0, 'z': 1.60, 'roll': 0.0, 'pitch': 0.0, 'yaw': 0.0, 'width': 300, 'height': 200, 'fov': 100},
-            {'type': 'sensor.lidar.ray_cast', 'id': 'LIDAR',
-             'x': 0.7, 'y': -0.4, 'z': 1.60, 'roll': 0.0, 'pitch': 0.0, 'yaw': -45.0},
-            {'type': 'sensor.other.radar', 'id': 'RADAR',
-             'x': 0.7, 'y': -0.4, 'z': 1.60, 'roll': 0.0, 'pitch': 0.0, 'yaw': -45.0, 'fov': 30},
-            {'type': 'sensor.other.gnss', 'id': 'GPS',
-             'x': 0.7, 'y': -0.4, 'z': 1.60},
-            {'type': 'sensor.other.imu', 'id': 'IMU',
-             'x': 0.7, 'y': -0.4, 'z': 1.60, 'roll': 0.0, 'pitch': 0.0, 'yaw': -45.0},
+            {
+                "type": "sensor.camera.rgb",
+                "id": "Center",
+                "x": 0.7,
+                "y": 0.0,
+                "z": 1.60,
+                "roll": 0.0,
+                "pitch": 0.0,
+                "yaw": 0.0,
+                "width": 300,
+                "height": 200,
+                "fov": 100,
+            },
+            {
+                "type": "sensor.lidar.ray_cast",
+                "id": "LIDAR",
+                "x": 0.7,
+                "y": -0.4,
+                "z": 1.60,
+                "roll": 0.0,
+                "pitch": 0.0,
+                "yaw": -45.0,
+            },
+            {
+                "type": "sensor.other.radar",
+                "id": "RADAR",
+                "x": 0.7,
+                "y": -0.4,
+                "z": 1.60,
+                "roll": 0.0,
+                "pitch": 0.0,
+                "yaw": -45.0,
+                "fov": 30,
+            },
+            {"type": "sensor.other.gnss", "id": "GPS", "x": 0.7, "y": -0.4, "z": 1.60},
+            {
+                "type": "sensor.other.imu",
+                "id": "IMU",
+                "x": 0.7,
+                "y": -0.4,
+                "z": 1.60,
+                "roll": 0.0,
+                "pitch": 0.0,
+                "yaw": -45.0,
+            },
             # {'type': 'sensor.opendrive_map', 'id': 'OpenDRIVE', 'reading_frequency': 1},
-            {'type': 'sensor.speedometer', 'id': 'Speed'},
+            {"type": "sensor.speedometer", "id": "Speed"},
         ]
         return sensors
 
-    def setup(self, path_to_conf_file, track= Track.SENSORS ):
+    def setup(self, path_to_conf_file, track=Track.SENSORS):
         """At a minimum, this method sets the Leaderboard modality.
         In this case, SENSORS"""
         self.track = track
@@ -70,7 +105,7 @@ class CarlaLeaderboardAgent(AutonomousAgent):
     def run_step(self, input_data, timestamp):
         """
         input_data: A dictionary containing sensor data
-        for the requested sensors. The data has been preprocessed 
+        for the requested sensors. The data has been preprocessed
         at sensor_interface.py, and will be given as numpy arrays.
         This dictionary is indexed by the ids defined in the sensor method.
 

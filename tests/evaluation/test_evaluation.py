@@ -4,42 +4,43 @@
 # @Last Modified by:   Spencer H
 # @Last Modified time: 2022-05-30
 
-import os, logging
-import numpy as np
+import logging
+import os
 from copy import copy, deepcopy
+
 import avstack
-from avstack.modules import tracking
-from avstack.modules import prediction
-from avstack.modules.perception.detections import BoxDetection
+import numpy as np
 from avstack.datastructs import DataContainer, DataManager
+from avstack.modules import prediction, tracking
+from avstack.modules.perception.detections import BoxDetection
 
 import avapi
 from avapi.kitti import KittiObjectDataset as KOD
 
 
-KITTI_data_dir = os.path.join(os.getcwd(), 'data/KITTI/object')
-if os.path.exists(os.path.join(KITTI_data_dir, 'training')):
-    KDM_train = KOD(KITTI_data_dir, 'training')
+KITTI_data_dir = os.path.join(os.getcwd(), "data/KITTI/object")
+if os.path.exists(os.path.join(KITTI_data_dir, "training")):
+    KDM_train = KOD(KITTI_data_dir, "training")
 else:
     KDM_train = None
     msg_obj = "Cannot run test - KITTI object data not downloaded"
-new_folder = os.path.join(KITTI_data_dir, 'tracking_test')
-new_label_folder = os.path.join(new_folder, 'label_2')
-new_calib_folder = os.path.join(new_folder, 'calib')
+new_folder = os.path.join(KITTI_data_dir, "tracking_test")
+new_label_folder = os.path.join(new_folder, "label_2")
+new_calib_folder = os.path.join(new_folder, "calib")
 os.makedirs(new_folder, exist_ok=True)
 
 np.random.seed(5)
 
-name_3d = 'detector-3d'
-name_2d = 'detector-2d'
+name_3d = "detector-3d"
+name_2d = "detector-2d"
 idx_frame = 100
 
 
 def make_kitti_tracking_data(KDM, idx_frame, dt=0.1, n_frames=10):
     truths = KDM.get_objects(idx_frame)
-    calib_camera = KDM.get_calibration(idx_frame, 'image-2')
+    calib_camera = KDM.get_calibration(idx_frame, "image-2")
     det_manager = DataManager(max_size=np.inf)
-    v_cam = 5*np.random.randn(len(truths))
+    v_cam = 5 * np.random.randn(len(truths))
     t = 0
     for i in range(n_frames):
         labs = deepcopy(truths)
@@ -65,26 +66,30 @@ def run_tracker(tracker, det_manager, predictor=None):
     frame = 0
     while not det_manager.empty():
         dets = det_manager.pop(name_3d)
-        tracks = tracker(frame, dets)
+        tracks = tracker(dets, frame=frame, identifier='tracker-0')
         if predictor is not None:
-            predictions = predictor(frame, tracks)
+            predictions = predictor(tracks, frame=frame)
         frame += 1
     return tracks
 
 
 def test_eval_tracks():
-    save_folder = os.path.join(os.getcwd(), 'tmp', 'results')
+    save_folder = os.path.join(os.getcwd(), "tmp", "results")
 
     if KDM_train is not None:
         # track
         detections = make_kitti_tracking_data(KDM_train, 100, n_frames=10)
-        tracker = tracking.tracker3d.BasicBoxTracker(framerate=10, save_output=True, save_folder=save_folder)
+        tracker = tracking.tracker3d.BasicBoxTracker(
+            framerate=10, save_output=True, save_folder=save_folder
+        )
         tracks = run_tracker(tracker, detections)
 
         # evaluate
         KDM_new = KOD(KITTI_data_dir, new_folder)
-        res_folder = os.path.join(save_folder, 'tracking')
-        res_frame, res_seq = avapi.evaluation.get_track_results_from_folder(KDM_new, res_folder, multiprocess=False)
+        res_folder = os.path.join(save_folder, "tracking")
+        res_frame, res_seq, res_exp = avapi.evaluation.get_track_results_from_folder(
+            KDM_new, res_folder, multiprocess=False, sensor_eval='main_camera'
+        )
         assert len(res_frame) == len(KDM_new.frames)
     else:
         logging.warning(msg_obj)
@@ -92,20 +97,26 @@ def test_eval_tracks():
 
 
 def test_eval_preds():
-    save_folder = os.path.join(os.getcwd(), 'tmp', 'results')
+    save_folder = os.path.join(os.getcwd(), "tmp", "results")
 
     if KDM_train is not None:
         # track
         detections = make_kitti_tracking_data(KDM_train, 100, n_frames=10)
-        tracker = tracking.tracker3d.BasicBoxTracker(framerate=10, save_output=True, save_folder=save_folder)
-        predictor = prediction.KinematicPrediction(dt_pred=0.1, t_pred_forward=3, save_output=True, save_folder=save_folder)
+        tracker = tracking.tracker3d.BasicBoxTracker(
+            framerate=10, save_output=True, save_folder=save_folder
+        )
+        predictor = prediction.KinematicPrediction(
+            dt_pred=0.1, t_pred_forward=3, save_output=True, save_folder=save_folder
+        )
         tracks = run_tracker(tracker, detections, predictor)
 
         # evaluate predictions
         KDM_new = KOD(KITTI_data_dir, new_folder)
-        res_folder = os.path.join(save_folder, 'prediction')
-        pred_results = avapi.evaluation.get_predict_results_from_folder(KDM_new, res_folder, multiprocess=False)
-        assert len(pred_results) > 0
+        res_folder = os.path.join(save_folder, "prediction")
+        pred_frame, pred_seq, pred_exp = avapi.evaluation.get_predict_results_from_folder(
+            KDM_new, res_folder, multiprocess=False, sensor_eval='main_camera'
+        )
+        assert len(pred_frame) > 0
     else:
         logging.warning(msg_obj)
         print(msg_obj)

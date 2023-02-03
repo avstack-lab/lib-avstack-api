@@ -8,17 +8,22 @@
 
 """
 
-import os
 import glob
+import os
+
 import yaml
 
 
 def get_default_prefixes():
-    default_config_glob = glob.glob(os.path.join(CURDIR, './**/default_*.yml'), recursive=True)
+    default_config_glob = glob.glob(
+        os.path.join(CURDIR, "./**/default_*.yml"), recursive=True
+    )
     def_prefixes = []
     def_files = []
     for i, conf in enumerate(default_config_glob):
-        def_prefixes.append(conf.split('/')[-1].replace('default_', '').replace('.yml', ''))
+        def_prefixes.append(
+            conf.split("/")[-1].replace("default_", "").replace(".yml", "")
+        )
     return def_prefixes, default_config_glob
 
 
@@ -33,9 +38,9 @@ def read_config(file_path):
         if os.path.exists(os.path.join(CURDIR, file_path)):
             file_path = os.path.join(CURDIR, file_path)
         else:
-            raise Exception(f'Cannot find config file: {file_path}')
+            raise Exception(f"Cannot find config file: {file_path}")
 
-    with open(file_path, 'r') as stream:
+    with open(file_path, "r") as stream:
         try:
             cfg = yaml.safe_load(stream)
         except yaml.YAMLError as exc:
@@ -61,18 +66,21 @@ def recurse_replace_default_config_elements(cfg, verbose=False):
                 for def_pre, def_file in zip(DEFAULTS[0], DEFAULTS[1]):
                     if def_pre in field:
                         # ---- merge
-                        if verbose: print(f'Updating {field} with {def_pre} default')
+                        if verbose:
+                            print(f"Updating {field} with {def_pre} default")
                         # Load in default (will implicitly recurse each field
                         # for its own defaults)
-                        cfg_default = read_config(def_file)                    
+                        cfg_default = read_config(def_file)
 
                         # Merge
                         cfg[field] = merge(cfg_default, cfg[field])
                     else:
-                        if verbose: print(f'NOT Updating {field} with {def_pre} default')                
+                        if verbose:
+                            print(f"NOT Updating {field} with {def_pre} default")
 
                 # ---- handle subfields, since dict itself
-                if verbose: print(f'Recursing because {field} field of cfg is a dict!')
+                if verbose:
+                    print(f"Recursing because {field} field of cfg is a dict!")
                 cfg[field] = recurse_replace_default_config_elements(cfg[field])
 
             elif isinstance(cfg[field], list):
@@ -83,14 +91,14 @@ def recurse_replace_default_config_elements(cfg, verbose=False):
                     else:
                         if isinstance(item, (int, str)):
                             pass
-                        else:   
+                        else:
                             for subi in item:
                                 assert not isinstance(subi, list)
                                 assert not isinstance(subi, dict)
 
             elif cfg[field] is None:
                 # give the option to replace if no values are set
-                 for def_pre, def_file in zip(DEFAULTS[0], DEFAULTS[1]):
+                for def_pre, def_file in zip(DEFAULTS[0], DEFAULTS[1]):
                     if def_pre in field:
                         cfg_default = read_config(def_file)
                         cfg[field] = cfg_default
@@ -102,19 +110,20 @@ def recurse_replace_default_config_elements(cfg, verbose=False):
 
 def merge(a, b, path=None):
     """merges dictionary a into dictionary b"""
-    if path is None: path = []
+    if path is None:
+        path = []
     try:
         for key in b:
             if key in a:
                 if isinstance(a[key], dict) and isinstance(b[key], dict):
                     merge(a[key], b[key], path + [str(key)])
                 elif a[key] == b[key]:
-                    pass # same leaf value
+                    pass  # same leaf value
                 else:
                     a[key] = b[key]  # setting value with b's value
             else:
                 a[key] = b[key]
     except Exception as e:
-        print('Exception with:', key)
+        print("Exception with:", key)
         raise e
     return a

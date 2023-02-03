@@ -7,20 +7,32 @@
 """
 
 """
+import abc
 import itertools
-import abc, os, weakref, queue, time, math
-import numpy as np
-import quaternion
+import math
+import os
+import queue
+import time
+import weakref
 from queue import PriorityQueue
-import carla
-from carla import ColorConverter as cc
 
 import avstack.sensors
+import carla
+import numpy as np
+import quaternion
 from avstack import transformations as tforms
-from avstack.geometry import NominalOriginStandard, Translation, Rotation, Origin, q_stan_to_cam
 from avstack.calibration import Calibration, CameraCalibration
+from avstack.geometry import (
+    NominalOriginStandard,
+    Origin,
+    Rotation,
+    Translation,
+    q_stan_to_cam,
+)
+from carla import ColorConverter as cc
 
 from avapi.carla import utils
+
 
 SensorData = avstack.sensors.SensorData
 
@@ -29,18 +41,28 @@ SensorData = avstack.sensors.SensorData
 # =============================================================
 
 
-class Sensor():
+class Sensor:
     id_iter = itertools.count()
-    blueprint_name = ''
-    name = ''
-    def __init__(self, source_name, parent, tform, attr,
-            mode, noise, save=False, save_folder='./sensor_data'):
+    blueprint_name = ""
+    name = ""
+
+    def __init__(
+        self,
+        source_name,
+        parent,
+        tform,
+        attr,
+        mode,
+        noise,
+        save=False,
+        save_folder="./sensor_data",
+    ):
 
         # -- attributes
         self.parent = parent
         self.tform_to_parent = tform
         self.global_ID = next(Sensor.id_iter)
-        self.lla_origin = parent.map.transform_to_geolocation(carla.Location(0,0,0))
+        self.lla_origin = parent.map.transform_to_geolocation(carla.Location(0, 0, 0))
         self.mode = mode
         self.noise = noise
         self.t0 = None
@@ -52,7 +74,7 @@ class Sensor():
         self.ID = source_ID
         self.source_ID = source_ID
         self.source_name = source_name
-        self.source_identifier = source_name + '-' + str(source_ID)
+        self.source_identifier = source_name + "-" + str(source_ID)
 
         # -- origin and calibration information
         loc = tform.location
@@ -62,13 +84,11 @@ class Sensor():
         # -- check if its a camera
         try:
             # -- camera!
-            w = int(attr['image_size_x'])
-            h = int(attr['image_size_y'])
-            fov_h = float(attr['fov'])/2.0   # half horizontal FOV
-            f = (w/2) / (np.tan(fov_h*math.pi/180.0))
-            self.P = np.array([[f, 0, w/2.0, 0],
-                               [0, f, h/2.0, 0],
-                               [0, 0,   1  , 0]])
+            w = int(attr["image_size_x"])
+            h = int(attr["image_size_y"])
+            fov_h = float(attr["fov"]) / 2.0  # half horizontal FOV
+            f = (w / 2) / (np.tan(fov_h * math.pi / 180.0))
+            self.P = np.array([[f, 0, w / 2.0, 0], [0, f, h / 2.0, 0], [0, 0, 1, 0]])
 
             # -- cameras have different default coordinates
             q_c = q_stan_to_cam * q_c
@@ -87,8 +107,12 @@ class Sensor():
         bp = parent.world.get_blueprint_library().find(self.blueprint_name)
         for k, v in attr.items():
             bp.set_attribute(k, str(v))
-        self.object = parent.world.spawn_actor(bp, tform, attach_to=self.parent.actor,\
-            attachment_type=carla.AttachmentType.Rigid)
+        self.object = parent.world.spawn_actor(
+            bp,
+            tform,
+            attach_to=self.parent.actor,
+            attachment_type=carla.AttachmentType.Rigid,
+        )
         time.sleep(0.5)  # to allow for initialization
 
         # -- saving
@@ -128,53 +152,60 @@ class Sensor():
                 calibration=self.calibration,
                 source_ID=self.source_ID,
                 source_name=self.source_name,
-                **kwargs)
+                **kwargs
+            )
             self.parent.sensor_data_manager.push(data_class)
             if self.save:
-                data_class.save_to_folder(self.save_folder, add_subfolder=True, **kwargs)
+                data_class.save_to_folder(
+                    self.save_folder, add_subfolder=True, **kwargs
+                )
         else:
-            print('sensor not initialized')
+            print("sensor not initialized")
 
 
 class GnssSensor(Sensor):
     next_id = itertools.count()
-    blueprint_name = 'sensor.other.gnss'
-    name = 'gps'
+    blueprint_name = "sensor.other.gnss"
+    name = "gps"
     base_data = avstack.sensors.GpsData
 
     @staticmethod
     def _on_sensor_event(weak_self, gnss):
         self = weak_self()
-        lla = [np.pi/180*gnss.latitude, np.pi/180*gnss.longitude, gnss.altitude]
-        ned = tforms.transform_point(lla, 'lla', 'ned', (np.array([0,0,0]), 'lla'))
-        sR = self.noise['sigma']
-        sb = self.noise['bias']
-        b = np.array([sb['east'], sb['north'], sR['up']])
-        r = np.array([sR['east'], sR['north'], sR['up']])
+        lla = [np.pi / 180 * gnss.latitude, np.pi / 180 * gnss.longitude, gnss.altitude]
+        ned = tforms.transform_point(lla, "lla", "ned", (np.array([0, 0, 0]), "lla"))
+        sR = self.noise["sigma"]
+        sb = self.noise["bias"]
+        b = np.array([sb["east"], sb["north"], sR["up"]])
+        r = np.array([sR["east"], sR["north"], sR["up"]])
         R = np.diag(r**2)
         v_enu = np.squeeze(np.array([ned[1], ned[0], -ned[2]]))
         v_enu = v_enu + b + r * np.random.randn(3)
-        enu = {'z':v_enu, 'R':R}
+        enu = {"z": v_enu, "R": R}
         self._make_data_class(gnss.timestamp, gnss.frame, enu, levar=self.origin.x)
 
 
 class ImuSensor(Sensor):
     next_id = itertools.count()
-    blueprint_name = 'sensor.other.imu'
-    name = 'imu'
+    blueprint_name = "sensor.other.imu"
+    name = "imu"
     base_data = avstack.sensors.ImuData
 
     @staticmethod
     def _on_sensor_event(weak_self, imu):
         self = weak_self()
-        agc = {'accelerometer':imu.accelerometer, 'gyroscope':imu.gyroscope, 'compass':imu.compass}
+        agc = {
+            "accelerometer": imu.accelerometer,
+            "gyroscope": imu.gyroscope,
+            "compass": imu.compass,
+        }
         self._make_data_class(imu.timestamp, imu.frame, agc)
 
 
 class RgbCameraSensor(Sensor):
     next_id = itertools.count()
-    blueprint_name = 'sensor.camera.rgb'
-    name = 'camera'
+    blueprint_name = "sensor.camera.rgb"
+    name = "camera"
     base_data = avstack.sensors.ImageData
 
     @staticmethod
@@ -186,8 +217,8 @@ class RgbCameraSensor(Sensor):
 
 class DepthCameraSensor(Sensor):
     next_id = itertools.count()
-    blueprint_name = 'sensor.camera.depth'
-    name = 'camera'
+    blueprint_name = "sensor.camera.depth"
+    name = "camera"
     base_data = avstack.sensors.DepthImageData
 
     @staticmethod
@@ -198,8 +229,8 @@ class DepthCameraSensor(Sensor):
 
 class LidarSensor(Sensor):
     next_id = itertools.count()
-    blueprint_name = 'sensor.lidar.ray_cast'
-    name = 'lidar'
+    blueprint_name = "sensor.lidar.ray_cast"
+    name = "lidar"
     base_data = avstack.sensors.LidarData
 
     @staticmethod
@@ -210,8 +241,8 @@ class LidarSensor(Sensor):
 
 class RadarSensor(Sensor):
     next_id = itertools.count()
-    blueprint_name = 'sensor.other.radar'
-    name = 'radar'
+    blueprint_name = "sensor.other.radar"
+    name = "radar"
     base_data = avstack.sensors.RadarDataRazelRRT
 
     @staticmethod

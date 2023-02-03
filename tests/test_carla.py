@@ -8,13 +8,15 @@
 
 """
 
-import os, logging
+import logging
+import os
+
 from avapi.carla import CarlaScenesManager
 
 
-carla_data_dir = './data/CARLA'
+carla_data_dir = "./data/CARLA"
 if os.path.exists(carla_data_dir):
-    if len(os.listdir('/your/path')) > 0:
+    if len(os.listdir(carla_data_dir)) > 0:
         CSM = CarlaScenesManager(carla_data_dir)
     else:
         CSM = None

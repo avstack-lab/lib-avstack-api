@@ -5,7 +5,12 @@
 
 set -e
 
-ln -sf /data/spencer/KITTI KITTI
-ln -sf /data/spencer/nuScenes nuScenes
-ln -sf /data/spencer/nuImages nuImages
-ln -sf /data/spencer/CARLA CARLA
+DATAFOLDER=${1:-/data/$(whoami)}
+DATAFOLDER=${DATAFOLDER%/}
+
+THISDIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+ln -sf "${DATAFOLDER}/KITTI" "$THISDIR/KITTI"
+ln -sf "${DATAFOLDER}/nuScenes" "$THISDIR/nuScenes"
+ln -sf "${DATAFOLDER}/nuImages" "$THISDIR/nuImages"
+ln -sf "${DATAFOLDER}/CARLA" "$THISDIR/CARLA"
