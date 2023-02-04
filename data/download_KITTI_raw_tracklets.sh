@@ -3,6 +3,8 @@
 set -e
 
 DATAFOLDER=${1:-/data/$(whoami)}
+MAXFILES=${2:-38}
+
 DATAFOLDER=${DATAFOLDER%/}
 DATAFOLDER="${DATAFOLDER}/KITTI/raw"
 
@@ -47,6 +49,9 @@ files=(2011_09_26_drive_0001
 
 mkdir -p "$DATAFOLDER"
 
+echo "Downloading up to $MAXFILES files"
+COUNT=0
+
 for FILE in ${files[@]}; do
         if [ ${FILE:(-3)} != "zip" ]
         then
@@ -62,5 +67,11 @@ for FILE in ${files[@]}; do
                 rm "${DATAFOLDER}/${shortname}"
         else
                 echo "This download failed!!!"
+        fi
+        COUNT=$((COUNT+1))
+        echo "Downloaded $COUNT / $MAXFILES files!"
+        if [[ $COUNT -ge $MAXFILES ]]; then
+                echo "Finished downloading $COUNT files"
+                break
         fi
 done

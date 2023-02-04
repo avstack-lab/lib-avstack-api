@@ -400,7 +400,7 @@ class KittiScenesManager(BaseSceneManager):
         self.splits_scenes = self.make_splits_scenes(modval=4, seed=1)
 
     def __len__(self):
-        return len(self.scene_tuples)
+        return len(self.scenes)
 
     def convert_raw_dataset(self):
         if self.raw_data_dir is not None:

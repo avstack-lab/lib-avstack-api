@@ -2,7 +2,7 @@ import pickle
 from copy import copy, deepcopy
 
 import numpy as np
-from avstack.datastructs import DataContainer
+from avstack.datastructs import DataContainer, DataManager
 from avstack.environment.objects import Occlusion
 from avstack.modules.perception.detections import BoxDetection
 from tqdm import tqdm
@@ -216,7 +216,7 @@ def run_case(
         raise NotImplementedError(trade_type)
     frame_results = []
     data_recur = {}
-    data_manager = avstack.datastructs.DataManager(max_size=5)
+    data_manager = DataManager(max_size=5)
     t_last = -np.inf
     for frame in tqdm(
         SD.frames[frame_start : min(max_frames + frame_start, len(SD.frames))]
@@ -516,7 +516,7 @@ def get_agg_tracking_metrics(
 ):
     """Get aggregate metrics"""
     # --- per-frame analysis
-    per_frame_res, per_seq_res = get_track_results_from_folder(
+    per_frame_res, per_seq_res, seq_exp = get_track_results_from_folder(
         SD,
         result_path=AV.tracking.save_folder,
         sensor_eval=sensor_eval,
@@ -553,7 +553,7 @@ def get_agg_prediction_metrics(
     SD, AV, sensor_eval, sensor_eval_super="main_lidar", multiprocess=False
 ):
     """Get aggregate and per-frame metrics"""
-    pred_res, pred_agg = get_predict_results_from_folder(
+    pred_res, pred_agg, pred_exp = get_predict_results_from_folder(
         SD,
         result_path=AV.prediction.save_folder,
         sensor_eval=sensor_eval,

@@ -4,7 +4,7 @@ set -e
 
 
 DATAFOLDER=${1:-/data/$(whoami)}
-MAXFILES=${2:-55}
+MAXFILES=${2:-38}
 
 DATAFOLDER=${DATAFOLDER%/}
 DATAFOLDER="${DATAFOLDER}/KITTI/raw"
@@ -181,18 +181,24 @@ for FILE in ${files[@]}; do
         then
                 shortname="${FILE}_sync.zip"
                 fullname="${FILE}/${FILE}_sync.zip"
+                IS_CALIB="false"
         else
                 shortname="$FILE"
                 fullname="$FILE"
+                IS_CALIB="true"
         fi
 	echo "Downloading: ${shortname}"
         wget -P "$DATAFOLDER" "https://s3.eu-central-1.amazonaws.com/avg-kitti/raw_data/${fullname}"
         unzip -o "$DATAFOLDER/$shortname" -d "$DATAFOLDER"
         rm "${DATAFOLDER}/${shortname}"
-        COUNT=$((COUNT+1))
-        echo "Downloaded $COUNT / $MAXFILES files!"
-        if [[ $COUNT -ge $MAXFILES ]]; then
-                echo "Finished downloading $COUNT files"
-                break
+        if [ "$IS_CALIB" = "true" ]; then
+                echo "Downloaded calibration file"
+        else
+                COUNT=$((COUNT+1))
+                echo "Downloaded $COUNT / $MAXFILES files!"
+                if [[ $COUNT -ge $MAXFILES ]]; then
+                        echo "Finished downloading $COUNT files"
+                        break
+                fi
         fi
 done
