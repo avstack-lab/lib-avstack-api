@@ -12,22 +12,8 @@
 import os
 import pickle
 import shutil
-from datetime import datetime
 
-import avstack.transformations as tforms
-import numpy as np
-from avstack import sensors
-from avstack.geometry import (
-    CameraCoordinates,
-    CarlaCoordinates,
-    Rotation,
-    StandardCoordinates,
-    Transform,
-    Translation,
-    Vector,
-)
-
-from avapi.carla import utils
+from avapi.carla.simulator import utils
 
 
 # =================================================

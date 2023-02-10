@@ -11,15 +11,14 @@ import logging
 import os
 import random
 import time
-import warnings
 
 import carla
 import numpy as np
-import yaml
 
-from . import config, sensors, utils
-from .ego import CarlaEgoActor
-from .manager import CarlaManager, InfrastructureManager
+from avapi.carla import config
+from avapi.carla.simulator import sensors, utils
+from avapi.carla.simulator.ego import CarlaEgoActor
+from avapi.carla.simulator.manager import CarlaManager, InfrastructureManager
 
 
 # -------------------------------------------------------------
@@ -219,7 +218,7 @@ def bootstrap_infrastructure(
 def bootstrap_infra_sensor(infra, idx, cfg, save_folder):
     # -- find spawn point
     spawn_points = infra.map.get_spawn_points()
-    if cfg["idx_spawn"] == "randint":
+    if cfg["idx_spawn"] == "random":
         spawn_point = random.choice(spawn_points)
     elif cfg["idx_spawn"] == "in_order":
         spawn_point = spawn_points[cfg["idx_spawn_list"][idx]]

@@ -10,28 +10,21 @@
 import abc
 import itertools
 import math
-import os
-import queue
 import time
 import weakref
-from queue import PriorityQueue
 
 import avstack.sensors
 import carla
 import numpy as np
-import quaternion
-from avstack import transformations as tforms
+from avstack.geometry import transformations as tforms
 from avstack.calibration import Calibration, CameraCalibration
 from avstack.geometry import (
-    NominalOriginStandard,
     Origin,
-    Rotation,
-    Translation,
     q_stan_to_cam,
 )
 from carla import ColorConverter as cc
 
-from avapi.carla import utils
+from avapi.carla.simulator import utils
 
 
 SensorData = avstack.sensors.SensorData
@@ -212,7 +205,10 @@ class RgbCameraSensor(Sensor):
     def _on_sensor_event(weak_self, image):
         self = weak_self()
         image.convert(cc.Raw)
-        self._make_data_class(image.timestamp, image.frame, image)
+        # I guess we need to do the conversion here....
+        np_img = np.reshape(np.array(image.raw_data, dtype=np.float32),
+                           (image.height, image.width, 4))[:,:,:3]  # BGRA
+        self._make_data_class(image.timestamp, image.frame, np_img)
 
 
 class DepthCameraSensor(Sensor):

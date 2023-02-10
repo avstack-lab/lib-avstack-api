@@ -8,16 +8,13 @@
 Define the ego classes
 """
 
-import math
-import queue
-import time
-from collections import deque
-from copy import copy, deepcopy
 
 import numpy as np
-import pygame
+from carla import Location, VehicleControl
+import random
+
 from avstack import GroundTruthInformation
-from avstack import transformations as tforms
+from avstack.geometry import transformations as tforms
 from avstack.datastructs import DataManager
 from avstack.environment import EnvironmentState
 from avstack.geometry import (
@@ -25,17 +22,11 @@ from avstack.geometry import (
     Rotation,
     Transform,
     Translation,
-    Vector,
-    bbox,
 )
 from avstack.modules.perception import detections
-from avstack.objects import VehicleState
-from carla import Location, VehicleControl
 from pygame.locals import K_DOWN, K_LEFT, K_RIGHT, K_SPACE, K_UP, K_q
 
-from avapi.carla import utils
-
-from . import sensors
+from avapi.carla.simulator import utils, sensors
 
 
 class CarlaEgoActor:
@@ -109,8 +100,11 @@ class CarlaEgoActor:
                 t_init, ego_init, map_data=self.map
             )
             if self.cfg["idx_destination"] is not None:
-                dest = self.spawn_points[self.cfg["idx_destination"]].location
-                dest = [dest.x, -dest.y, dest.z]
+                if self.cfg["idx_destination"] == "random":
+                    dest = random.choice(self.spawn_points)
+                else:
+                    dest = self.spawn_points[self.cfg["idx_destination"]].location
+                    dest = [dest.x, -dest.y, dest.z]
             elif self.cfg["delta_destination"] is not None:
                 dkeys = sorted(list(self.cfg["delta_destination"].keys()))
                 if dkeys == ["forward", "right", "up"]:

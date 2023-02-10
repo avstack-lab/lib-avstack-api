@@ -30,17 +30,11 @@ If the ego is in MANUAL mode, use ARROWS for control
 import datetime
 import math
 import os
-import sys
 import weakref
 
 import carla
-import cv2
 import numpy as np
 import pygame
-from avstack import calibration
-from avstack import transformations as tforms
-from avstack.geometry import Origin, Rotation, Translation, bbox
-from avstack.utils import maskfilters
 from carla import ColorConverter as cc
 from pygame.locals import (
     K_0,
@@ -81,8 +75,9 @@ from pygame.locals import (
     K_z,
 )
 
-from avapi.carla import utils
-from avapi.visualize import draw_box2d, draw_projected_box3d
+from avstack import calibration
+from avstack.geometry import Origin, bbox
+from avapi.carla.simulator import utils
 
 
 # ==============================================================================

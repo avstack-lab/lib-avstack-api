@@ -12,9 +12,9 @@ import math
 
 import carla
 import numpy as np
-from avstack import transformations as tforms
+from avstack.geometry import transformations as tforms
 from avstack.geometry import NominalOriginStandard, Rotation, Translation, Vector, bbox
-from avstack.objects import VehicleState
+from avstack.environment.objects import VehicleState
 
 
 def get_obj_type_from_actor(actor):
