@@ -13,7 +13,7 @@ import os
 import argparse
 import numpy as np
 from tqdm import tqdm
-from copy import copy, deepcopy
+from copy import deepcopy
 from multiprocessing import Pool
 from functools import partial
 import logging
@@ -21,11 +21,11 @@ import logging
 import avstack
 import avapi
 
-from avstack.objects import Occlusion
+from avstack.environment.objects import Occlusion
 
 
 def main(args, frame_start=4, frame_end_trim=4, n_frames_max=10000):
-    CSM = avapi.carla.CarlaSceneManager(args.data_dir)
+    CSM = avapi.carla.CarlaScenesManager(args.data_dir)
     for CDM in tqdm(CSM):
         with_multi = True
         chunksize = 10
@@ -118,7 +118,7 @@ def process_func_frames(CDM, sens, obj_sens_folder, ego, objects_ego, i_frame):
         # -- filter in view of sensor
         if 'cam' in sens.lower():
             objs_sens = [obj for obj in objects_ego if
-                avstack.utils.maskfilters.box_in_fov(obj.box, calib,
+                avstack.maskfilters.box_in_fov(obj.box, calib,
                     d_thresh=150, check_origin=False)]
         else:
             objs_sens = objects_ego
