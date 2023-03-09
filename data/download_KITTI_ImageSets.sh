@@ -6,7 +6,7 @@ DATAFOLDER=${1:-/data/$(whoami)}
 DATAFOLDER=${DATAFOLDER%/}
 DATAFOLDER="${DATAFOLDER}/KITTI/object"
 
-DOWNLOAD="https://avstack-public-data.s3.amazonaws.com/KITTI-ImageSets"
+DOWNLOAD="https://g-b0ef78.1d0d8d.03c0.data.globus.org/datasets/kitti"
 
 echo "Downloading KITTI ImageSets - saving to $DATAFOLDER"
 
