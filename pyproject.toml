@@ -23,6 +23,7 @@ lib-avstack-core = { path = "../lib-avstack-core", develop = true }
 trackeval = { path = "./third_party/TrackEval", develop = true }
 
 [tool.poetry.dev-dependencies]
+ipywidgets = "^8.0"
 jupyter = "^1.0.0"
 
 [tool.poetry.group.test.dependencies]

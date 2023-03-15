@@ -165,9 +165,14 @@ class KittiObjectDataset(BaseSceneDataset):
         ego = VehicleState("car")
         h, w, l = self.ego_size
         box = bbox.Box3D(
-            [h, w, l, np.zeros((3,)), np.quaternion(1)], NominalOriginStandard
+            [h, w, l, np.zeros((3,)), np.quaternion(1)], NominalOriginStandard,
+            where_is_t='bottom'
         )
-        ego.set(self.get_timestamp(frame), pos, box)
+        pos = np.zeros((3,))
+        ego.set(self.get_timestamp(frame),
+                pos,
+                box,
+                attitude=np.quaternion(1),)
         return ego
 
     def check_frame(self, frame):
