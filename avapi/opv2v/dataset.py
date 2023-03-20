@@ -9,7 +9,8 @@ import yaml
 import numpy as np
 import open3d as o3d
 from avstack import calibration
-from avstack.geometry import Origin, q_mult_vec, transform_orientation
+from avstack.environment.objects import Occlusion, VehicleState
+from avstack.geometry import Origin, q_mult_vec, transform_orientation, NominalOriginStandard, bbox
 from cv2 import imread, imwrite
 
 from .._dataset import BaseSceneDataset, BaseSceneManager
@@ -171,7 +172,60 @@ class Opv2vSceneDataset(BaseSceneDataset):
             return lidar            
     
     def _load_objects(self, frame, sensor, whitelist_types=_nominal_whitelist_types, ignore_types=_nominal_ignore_types):
-        raise NotImplementedError
+        object_calib = self.get_calibration(frame, sensor)
+        yam = self._load_yaml(frame)
+        objects = []
+        for ID, vehicle in yam['vehicles'].items():
+            object_origin = NominalOriginStandard
+
+            # Orientation
+            B_ryp = yam['true_ego_pos'][3:6]
+            B_rpy = [np.pi/180*B_ryp[0], np.pi/180*-B_ryp[2], np.pi/180*-B_ryp[1]]  # negative bc carla
+            V_ryp = vehicle['angle']
+            V_rpy = [np.pi/180*V_ryp[0], np.pi/180*-V_ryp[2], np.pi/180*-V_ryp[1]]  # negative bc carla
+            q_O_2_B = transform_orientation(B_rpy, 'euler', 'quat')
+            q_O_2_V = transform_orientation(V_rpy, 'euler', 'quat')
+            q_B_2_V = q_O_2_V * q_O_2_B.conjugate()
+
+            # Position
+            x_O_2_B_in_O = np.array(yam['true_ego_pos'][:3])
+            x_O_2_V_in_O = np.array(vehicle['location'])
+            x_B_2_V_in_O = x_O_2_V_in_O - x_O_2_B_in_O
+            x_B_2_V_in_B = q_mult_vec(q_O_2_V, x_B_2_V_in_O)
+
+            # Velocity
+            v_body_B = np.array([yam['ego_speed'], 0, 0]) * 1000/3600
+            v_body_V = np.array([vehicle['speed'], 0, 0]) * 1000/3600
+            v_forward_V = q_mult_vec(q_B_2_V.conjugate(), v_body_V)  # TODO: check this
+            v_forward_B = v_body_B
+            v_delta = v_forward_V - v_forward_B
+
+            # Bounding box
+            h, w, l = [2*e for e in vehicle['extent']]
+
+            # Wrap in vehicle state
+            obj = VehicleState('car', ID)
+            pos = x_B_2_V_in_B
+            box3d = bbox.Box3D([h, w, l, x_B_2_V_in_B, q_B_2_V], object_origin, where_is_t='center')
+            vel = v_delta
+            acc = None
+            att = q_B_2_V
+            ang = None
+            occ = Occlusion.UNKNOWN
+            obj.set(
+                float(self.get_timestamp(frame, sensor)),
+                pos,
+                box3d,
+                vel,
+                acc,
+                att,
+                ang,
+                occlusion=occ,
+                origin=object_origin,
+            )
+            obj.change_origin(object_calib.origin)
+            objects.append(obj)
+        return objects
     
     def _load_timestamp(self, frame, sensor):
         return self.framerate*frame
