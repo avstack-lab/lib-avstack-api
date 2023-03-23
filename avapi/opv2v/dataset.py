@@ -10,7 +10,7 @@ import numpy as np
 import open3d as o3d
 from avstack import calibration
 from avstack.environment.objects import Occlusion, VehicleState
-from avstack.geometry import Origin, q_mult_vec, transform_orientation, NominalOriginStandard, bbox
+from avstack.geometry import Origin, q_mult_vec, transform_orientation, NominalOriginStandard, bbox, q_stan_to_cam
 from cv2 import imread, imwrite
 
 from .._dataset import BaseSceneDataset, BaseSceneManager
@@ -109,16 +109,19 @@ class Opv2vSceneDataset(BaseSceneDataset):
         if 'camera' in sensor.lower():
             # Orientation
             B_ryp = yam['true_ego_pos'][3:6]
-            B_rpy = [np.pi/180*B_ryp[0], np.pi/180*-B_ryp[2], np.pi/180*-B_ryp[1]]  # negative bc carla
+            B_rpy = [np.pi/180*B_ryp[0], np.pi/180*-B_ryp[2], np.pi/180*-B_ryp[1]]
             C_ryp = yam[sensor]['cords'][3:6]
+            C_rpy = [C_ryp[0], -C_ryp[2], -C_ryp[1]]
             C_rpy = [np.pi/180*C_ryp[0], np.pi/180*-C_ryp[2], np.pi/180*-C_ryp[1]]  # negative bc carla
-            q_O_2_B = transform_orientation(B_rpy, 'euler', 'quat')
             q_O_2_C = transform_orientation(C_rpy, 'euler', 'quat')
-            q_B_2_C = q_O_2_C * q_O_2_B.conjugate()
-
+            q_O_2_B = transform_orientation(B_rpy, 'euler', 'quat')
+            q_B_2_C = q_stan_to_cam * q_O_2_C * q_O_2_B.conjugate()
+            
             # Position
             x_O_2_B_in_O = np.array(yam['true_ego_pos'][:3])
+            x_O_2_B_in_O[1] *= -1
             x_O_2_C_in_O = np.array(yam[sensor]['cords'][:3])
+            x_O_2_C_in_O[1] *= -1
             x_B_2_C_in_O = x_O_2_C_in_O - x_O_2_B_in_O
             x_B_2_C_in_B = q_mult_vec(q_O_2_B, x_B_2_C_in_O)
 
@@ -141,7 +144,9 @@ class Opv2vSceneDataset(BaseSceneDataset):
 
             # Position
             x_O_2_B_in_O = np.array(yam['true_ego_pos'][:3])
+            x_O_2_B_in_O[1] *= -1
             x_O_2_L_in_O = np.array(yam['lidar_pose'][:3])
+            x_O_2_L_in_O[1] *= -1
             x_B_2_L_in_O = x_O_2_L_in_O - x_O_2_B_in_O
             x_B_2_L_in_B = q_mult_vec(q_O_2_L, x_B_2_L_in_O)
             
@@ -189,7 +194,9 @@ class Opv2vSceneDataset(BaseSceneDataset):
 
             # Position
             x_O_2_B_in_O = np.array(yam['true_ego_pos'][:3])
+            x_O_2_B_in_O[1] *= -1
             x_O_2_V_in_O = np.array(vehicle['location'])
+            x_O_2_V_in_O[1] *= -1
             x_B_2_V_in_O = x_O_2_V_in_O - x_O_2_B_in_O
             x_B_2_V_in_B = q_mult_vec(q_O_2_V, x_B_2_V_in_O)
 
@@ -201,12 +208,12 @@ class Opv2vSceneDataset(BaseSceneDataset):
             v_delta = v_forward_V - v_forward_B
 
             # Bounding box
-            h, w, l = [2*e for e in vehicle['extent']]
+            l, w, h = [2*e for e in vehicle['extent']]
 
             # Wrap in vehicle state
             obj = VehicleState('car', ID)
             pos = x_B_2_V_in_B
-            box3d = bbox.Box3D([h, w, l, x_B_2_V_in_B, q_B_2_V], object_origin, where_is_t='center')
+            box3d = bbox.Box3D([h, w, l, x_B_2_V_in_B, q_B_2_V], object_origin, where_is_t='bottom')
             vel = v_delta
             acc = None
             att = q_B_2_V
