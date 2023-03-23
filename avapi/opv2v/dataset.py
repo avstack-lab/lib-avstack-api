@@ -148,7 +148,7 @@ class Opv2vSceneDataset(BaseSceneDataset):
             x_O_2_L_in_O = np.array(yam['lidar_pose'][:3])
             x_O_2_L_in_O[1] *= -1
             x_B_2_L_in_O = x_O_2_L_in_O - x_O_2_B_in_O
-            x_B_2_L_in_B = q_mult_vec(q_O_2_L, x_B_2_L_in_O)
+            x_B_2_L_in_B = q_mult_vec(q_O_2_B, x_B_2_L_in_O)
             
             # Calibration
             calib = calibration.Calibration(Origin(x_B_2_L_in_B, q_B_2_L))
@@ -171,6 +171,7 @@ class Opv2vSceneDataset(BaseSceneDataset):
     def _load_lidar(self, frame, sensor, filter_front=False, **kwargs):
         pcd = o3d.io.read_point_cloud(os.path.join(self.scene_path, "%06d.pcd"%frame))
         lidar = np.asarray(pcd.points)
+        lidar[:,1] *= -1
         if filter_front:
             return lidar[lidar[:, 0] > 0, :]
         else:
@@ -198,7 +199,7 @@ class Opv2vSceneDataset(BaseSceneDataset):
             x_O_2_V_in_O = np.array(vehicle['location'])
             x_O_2_V_in_O[1] *= -1
             x_B_2_V_in_O = x_O_2_V_in_O - x_O_2_B_in_O
-            x_B_2_V_in_B = q_mult_vec(q_O_2_V, x_B_2_V_in_O)
+            x_B_2_V_in_B = q_mult_vec(q_O_2_B, x_B_2_V_in_O)
 
             # Velocity
             v_body_B = np.array([yam['ego_speed'], 0, 0]) * 1000/3600
