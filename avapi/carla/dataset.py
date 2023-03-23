@@ -51,16 +51,6 @@ class CarlaScenesManager(BaseSceneManager):
         self.scenes = sorted(next(os.walk(data_dir))[1])
         self.splits_scenes = self.make_splits_scenes(modval=4, seed=1)
 
-    def __iter__(self):
-        for scene in self.scenes:
-            yield self.get_scene_dataset_by_name(scene)
-
-    def __len__(self):
-        return len(self.scenes)
-
-    def list_scenes(self):
-        print(self.scenes)
-
     def get_scene_dataset_by_index(self, scene_idx):
         return CarlaSceneDataset(self.data_dir, self.scenes[scene_idx])
 
