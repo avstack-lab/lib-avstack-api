@@ -31,6 +31,16 @@ def wrap_minus_pi_to_pi(phases):
 
 
 class BaseSceneManager:
+    def __iter__(self):
+        for scene in self.scenes:
+            yield self.get_scene_dataset_by_name(scene)
+
+    def __len__(self):
+        return len(self.scenes)
+
+    def list_scenes(self):
+        print(self.scenes)
+
     def get_splits_scenes(self):
         return self.splits_scenes
 
@@ -59,10 +69,6 @@ class BaseSceneDataset:
 
     def __repr__(self):
         return self.__str__()
-
-    @property
-    def frames(self):
-        raise NotImplementedError
 
     def get_sensor_ID(self, sensor):
         try:

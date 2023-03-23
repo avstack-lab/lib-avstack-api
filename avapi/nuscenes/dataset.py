@@ -52,9 +52,6 @@ class nuScenesManager(_nuManager):
             self.scene_number_to_index[int(sc["name"].replace("scene-", ""))] = i
             self.index_to_scene[i] = sc["name"]
 
-    def __len__(self):
-        return len(self.scenes)
-
     def list_scenes(self):
         self.nuX.list_scenes()
 
