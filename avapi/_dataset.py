@@ -20,6 +20,7 @@ from avstack.geometry import (
     bbox,
     get_origin_from_line,
     q_cam_to_stan,
+    Vector
 )
 from avstack.geometry import transformations as tforms
 from cv2 import imread
@@ -59,6 +60,12 @@ class BaseSceneManager:
                 splits_scenes["train"].append(scene)
         return splits_scenes
 
+    def get_scene_dataset_by_name(self):
+        raise NotImplementedError
+    
+    def get_scene_dataset_by_index(self):
+        raise NotImplementedError
+
 
 class BaseSceneDataset:
     sensor_IDs = {}
@@ -67,8 +74,28 @@ class BaseSceneDataset:
         self.whitelist_types = whitelist_types
         self.ignore_types = ignore_types
 
+    def __str__(self):
+        return f"{self.NAME} dataset of folder: {self.split_path}"
+
     def __repr__(self):
         return self.__str__()
+
+    def __len__(self):
+        return len(self.frames)
+
+    @property
+    def frames(self):
+        return self._frames
+
+    @frames.setter
+    def frames(self, frames):
+        self._frames = frames
+
+    def check_frame(self, frame):
+        assert (
+            frame in self.frames
+        ), f"Candidate frame, {frame}, not in frame set {self.frames}"
+
 
     def get_sensor_ID(self, sensor):
         try:
@@ -91,12 +118,12 @@ class BaseSceneDataset:
 
     def get_calibration(self, frame, sensor):
         sensor = self.get_sensor_name(sensor)
-        return self._load_calibration(frame, sensor)
+        return self._load_calibration(frame, sensor=sensor)
 
     def get_ego(self, frame):
         return self._load_ego(frame)
 
-    def get_image(self, frame, sensor):
+    def get_image(self, frame, sensor=None):
         sensor = self.get_sensor_name(sensor)
         ts = self.get_timestamp(frame, sensor)
         data = self._load_image(frame, sensor=sensor)
@@ -171,7 +198,7 @@ class BaseSceneDataset:
 
     def get_timestamp(self, frame, sensor="lidar"):
         sensor = self.get_sensor_name(sensor)
-        return self._load_timestamp(frame, sensor)
+        return self._load_timestamp(frame, sensor=sensor)
 
     def save_calibration(self, frame, calib, folder, **kwargs):
         if not os.path.exists(folder):
@@ -429,14 +456,6 @@ class _nuManager(BaseSceneDataset):
 
 
 class _nuBaseDataset(BaseSceneDataset):
-    nominal_whitelist_types = [
-        "car",
-        "pedestrian",
-        "bicycle",
-        "truck",
-        "bus",
-        "motorcycle",
-    ]
     nominal_whitelist_types = _nominal_whitelist_types
     nominal_ignore_types = _nominal_ignore_types
 
@@ -457,9 +476,6 @@ class _nuBaseDataset(BaseSceneDataset):
         self.split = split
         self.split_path = os.path.join(data_dir, split)
         self.make_sample_records()
-
-    def __str__(self):
-        return f"{self.NAME} ObjectDataset of folder: {self.split_path}"
 
     @property
     def frames(self):
@@ -489,7 +505,8 @@ class _nuBaseDataset(BaseSceneDataset):
                 }
                 for obj_ann in obj_anns
             ]
-        return boxes
+        velocities = [self.nuX.box_velocity(box["box"].token) for box in boxes]
+        return boxes, velocities
 
     def _get_sensor_record(self, frame, sensor=None):
         try:
@@ -559,6 +576,9 @@ class _nuBaseDataset(BaseSceneDataset):
     def _load_ego(self, frame, sensor="LIDAR_TOP"):
         sd_record = self._get_sensor_record(frame, sensor)
         ego_data = self.nuX.get("ego_pose", sd_record["ego_pose_token"])
+        # -- get ego velocity
+        raise NotImplementedError
+
         ts = ego_data["timestamp"] / 1e6 - self.t0
         line = self._ego_to_line(ts, ego_data)
         return self.parse_label_line(line)
@@ -576,15 +596,18 @@ class _nuBaseDataset(BaseSceneDataset):
         class_names = [
             'car', 'truck', 'trailer', 'bus', 'construction_vehicle', 'bicycle',
             'motorcycle', 'pedestrian', 'traffic_cone', 'barrier']
+
+        NOTE: for now, velocity is in the sensor's coordinate frame (moving)
         """
         sensor_data = self._get_sensor_record(frame, sensor)
+        ego = self.get_ego(frame)
         origin = self.get_calibration(frame, sensor).origin
         try:
-            boxes = self._get_anns_metadata(sensor_data["token"])
+            boxes, velocities = self._get_anns_metadata(sensor_data["token"])
         except KeyError:
-            boxes = self._get_anns_metadata(sensor_data["sample_token"])
+            boxes, velocities = self._get_anns_metadata(sensor_data["sample_token"])
         objects = []
-        for box in boxes:
+        for box, vel in zip(boxes, velocities):
             obj_type = general_to_detection_class[box["name"]]
             if (
                 (obj_type in whitelist_types)
@@ -594,6 +617,9 @@ class _nuBaseDataset(BaseSceneDataset):
                 ts = sensor_data["timestamp"]
                 line = self._box_to_line(ts, box["box"], origin)
                 obj = self.parse_label_line(line)
+                velocity = Vector(vel, origin=ego.origin)
+                velocity.change_origin(obj.origin)
+                obj.velocity = velocity
                 objects.append(obj)
         return np.array(objects)
 

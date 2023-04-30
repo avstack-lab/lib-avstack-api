@@ -84,7 +84,9 @@ class nuScenesSceneDataset(_nuBaseDataset):
     sensors = {
         "lidar": "LIDAR_TOP",
         "main_lidar": "LIDAR_TOP",
+        "main-lidar": "LIDAR_TOP",
         "main_camera": "CAM_FRONT",
+        "main-camera": "CAM_FRONT",
     }
     keyframerate = 2
     sensor_IDs = {

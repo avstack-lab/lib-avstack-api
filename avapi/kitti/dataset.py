@@ -104,7 +104,7 @@ _nominal_ignore_types = ["DontCare", "Van", "Truck"]
 
 
 class KittiObjectDataset(BaseSceneDataset):
-    name = "KITTI"
+    NAME = "KITTI"
     subfolders_essential = ["velodyne", "image_2", "calib", "label_2"]
     subfolders_optional = ["planes", "velodyne_CROP", "velodyne_reduced"]
     subfolders_all = list(set(subfolders_essential).union(set(subfolders_optional)))
@@ -149,8 +149,6 @@ class KittiObjectDataset(BaseSceneDataset):
         self.sequence_id = split
         super().__init__(whitelist_types, ignore_types)
 
-    def __str__(self):
-        return f"KittiObjectDataset of folder: {self.split_path}"
 
     @property
     def frames(self):
@@ -174,11 +172,6 @@ class KittiObjectDataset(BaseSceneDataset):
                 box,
                 attitude=np.quaternion(1),)
         return ego
-
-    def check_frame(self, frame):
-        assert (
-            frame in self.frames
-        ), f"Candidate frame, {frame}, not in frame set {self.frames}"
 
     @classmethod
     def _get_frames_folder(cls, folder):
@@ -374,7 +367,7 @@ class KittiObjectDataset(BaseSceneDataset):
 class KittiScenesManager(BaseSceneManager):
     """Managing the raw dataset"""
 
-    name = "Kitti"
+    NAME = "Kitti"
 
     def __init__(self, data_dir, raw_data_dir=None, convert_raw=False):
         self.data_dir = data_dir
@@ -404,16 +397,12 @@ class KittiScenesManager(BaseSceneManager):
         )
         self.splits_scenes = self.make_splits_scenes(modval=4, seed=1)
 
-    def __len__(self):
-        return len(self.scenes)
-
     def convert_raw_dataset(self):
         if self.raw_data_dir is not None:
             KRD = KittiRawDataset(self.raw_data_dir)
             print("Converting dates and sequences from raw data")
             for idx_date, idx_seq in tqdm(self.scene_tuples):
-                # print('Converting date {} seq {}'.format(self.date_names[idx_date], idx_seq))
-                exp_path = KRD.convert_sequence(
+                _ = KRD.convert_sequence(
                     self.date_names[idx_date],
                     idx_seq=idx_seq,
                     max_frames=None,
@@ -422,9 +411,6 @@ class KittiScenesManager(BaseSceneManager):
                 )
         else:
             print("No raw data dir available to postprocess...assuming already done")
-
-    def list_scenes(self):
-        print(self.scenes)
 
     def get_scene_dataset_by_name(self, scene_name):
         return KittiObjectDataset(self.data_dir, scene_name)
