@@ -33,7 +33,7 @@ except ModuleNotFoundError as e:
 
 
 class nuScenesManager(_nuManager):
-    name = "nuScenes"
+    NAME = "nuScenes"
 
     def __init__(self, data_dir, split="v1.0-mini", verbose=False):
         nusc = NuScenes(version=split, dataroot=data_dir, verbose=verbose)

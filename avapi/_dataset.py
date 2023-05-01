@@ -130,7 +130,7 @@ class BaseSceneDataset:
         cam_string = "image-%i" % sensor if isinstance(sensor, int) else sensor
         cam_string = cam_string if sensor is not None else self.sensor_name(frame)
         calib = self.get_calibration(frame, cam_string)
-        return sensors.ImageData(ts, frame, data, calib, self.get_sensor_ID(cam_string))
+        return sensors.ImageData(ts, frame, data, calib, self.get_sensor_ID(cam_string), channel_order='rgb')
 
     def get_sensor_data_filepath(self, frame, sensor):
         sensor = self.get_sensor_name(sensor)
@@ -561,7 +561,7 @@ class _nuBaseDataset(BaseSceneDataset):
         sensor = sensor if sensor is not None else self.sensor_name(frame)
         if "CAM" in sensor:
             P = np.hstack((np.array(calib_data["camera_intrinsic"]), np.zeros((3, 1))))
-            calib = calibration.CameraCalibration(origin, P, self.img_shape)
+            calib = calibration.CameraCalibration(origin, P, self.img_shape, channel_order="bgr")
         else:
             calib = calibration.Calibration(origin)
         return calib
@@ -571,14 +571,13 @@ class _nuBaseDataset(BaseSceneDataset):
 
     def _load_image(self, frame, sensor=None):
         img_fname = self._get_sensor_file_name(frame, sensor)
-        return imread(img_fname)[:, :, ::-1]  # convert to RGB
+        return imread(img_fname)
 
     def _load_ego(self, frame, sensor="LIDAR_TOP"):
         sd_record = self._get_sensor_record(frame, sensor)
         ego_data = self.nuX.get("ego_pose", sd_record["ego_pose_token"])
         # -- get ego velocity
         raise NotImplementedError
-
         ts = ego_data["timestamp"] / 1e6 - self.t0
         line = self._ego_to_line(ts, ego_data)
         return self.parse_label_line(line)
