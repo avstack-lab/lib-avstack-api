@@ -1,5 +1,6 @@
 .install.stamp
 *.pdf
+*mmcv*.whl
 
 # Data folders. Is there a better way?
 data/KITTI
