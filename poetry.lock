@@ -1822,7 +1822,7 @@ develop = true
 [package.dependencies]
 cython = "^0.29"
 filterpy = "^1"
-mmcv = "^2.0.0"
+mmcv = {url = "https://download.openmmlab.com/mmcv/dist/cu113/torch1.10.0/mmcv-2.0.0-cp38-cp38-manylinux1_x86_64.whl"}
 mmdet = {path = "third_party/mmdetection", develop = true}
 mmdet3d = {path = "third_party/mmdetection3d", develop = true}
 mmengine = "^0.7.3"
@@ -2154,13 +2154,14 @@ category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "mmcv-2.0.0.tar.gz", hash = "sha256:2a26c0b1148979954da9c98f88b1ca038ef823031f5975ff4f8951e75474638c"},
+    {file = "mmcv-2.0.0-cp38-cp38-manylinux1_x86_64.whl", hash = "sha256:4ad0086d2178f26a30df15297feb05c0f76c2e8729b21d98fe8f967709187043"},
 ]
 
 [package.dependencies]
 addict = "*"
 mmengine = ">=0.2.0"
 numpy = "*"
+opencv-python = ">=3"
 packaging = "*"
 Pillow = "*"
 pyyaml = "*"
@@ -2173,9 +2174,12 @@ build = ["pytest-runner"]
 optional = ["ninja", "psutil"]
 tests = ["PyTurboJPEG", "coverage", "lmdb", "onnx", "onnxoptimizer", "onnxruntime", "pytest", "scipy", "tifffile"]
 
+[package.source]
+type = "url"
+url = "https://download.openmmlab.com/mmcv/dist/cu113/torch1.10.0/mmcv-2.0.0-cp38-cp38-manylinux1_x86_64.whl"
 [[package]]
 name = "mmdet"
-version = "2.25.3"
+version = "3.0.0"
 description = "OpenMMLab Detection Toolbox and Benchmark"
 category = "main"
 optional = false
@@ -2187,15 +2191,17 @@ develop = true
 matplotlib = "*"
 numpy = "*"
 pycocotools = "*"
+scipy = "*"
+shapely = "*"
 six = "*"
 terminaltables = "*"
 
 [package.extras]
-all = ["asynctest", "cityscapesscripts", "codecov", "cython", "flake8", "imagecorruptions", "interrogate", "isort (==4.3.21)", "kwarray", "matplotlib", "mmtrack", "numpy", "onnx (==1.7.0)", "onnxruntime (>=1.8.0)", "protobuf (<=3.20.1)", "pycocotools", "pytest", "scipy", "six", "sklearn", "terminaltables", "ubelt", "xdoctest (>=0.10.0)", "yapf"]
+all = ["cityscapesscripts", "cython", "imagecorruptions", "matplotlib", "numpy", "pycocotools", "scikit-learn", "scipy", "shapely", "six", "terminaltables"]
 build = ["cython", "numpy"]
-mim = ["mmcv-full (>=1.3.17)"]
-optional = ["cityscapesscripts", "imagecorruptions", "scipy", "sklearn"]
-tests = ["asynctest", "codecov", "flake8", "interrogate", "isort (==4.3.21)", "kwarray", "mmtrack", "onnx (==1.7.0)", "onnxruntime (>=1.8.0)", "protobuf (<=3.20.1)", "pytest", "ubelt", "xdoctest (>=0.10.0)", "yapf"]
+mim = ["mmcv (>=2.0.0rc4,<2.1.0)", "mmengine (>=0.7.1,<1.0.0)"]
+optional = ["cityscapesscripts", "imagecorruptions", "scikit-learn"]
+tests = ["asynctest", "cityscapesscripts", "codecov", "flake8", "imagecorruptions", "instaboostfast", "interrogate", "isort (==4.3.21)", "kwarray", "memory_profiler", "mmtrack", "onnx (==1.7.0)", "onnxruntime (>=1.8.0)", "parameterized", "protobuf (<=3.20.1)", "psutil", "pytest", "ubelt", "xdoctest (>=0.10.0)", "yapf"]
 
 [package.source]
 type = "directory"
@@ -2203,7 +2209,7 @@ url = "../lib-avstack-core/third_party/mmdetection"
 
 [[package]]
 name = "mmdet3d"
-version = "1.0.0rc6"
+version = "1.1.0"
 description = "OpenMMLab's next-generation platformfor general 3D object detection."
 category = "main"
 optional = false
@@ -2213,20 +2219,21 @@ develop = true
 
 [package.dependencies]
 lyft_dataset_sdk = "*"
-networkx = ">=2.2,<2.3"
-numba = "0.53.0"
+networkx = ">=2.5"
+numba = "*"
 numpy = "*"
 nuscenes-devkit = "*"
+open3d = "*"
 plyfile = "*"
 scikit-image = "*"
 tensorboard = "*"
-trimesh = ">=2.35.39,<2.35.40"
+trimesh = "*"
 
 [package.extras]
-all = ["asynctest", "codecov", "flake8", "interrogate", "isort", "kwarray", "lyft_dataset_sdk", "networkx (>=2.2,<2.3)", "numba (==0.53.0)", "numpy", "nuscenes-devkit", "open3d", "plyfile", "pytest", "pytest-cov", "pytest-runner", "scikit-image", "spconv", "tensorboard", "trimesh (>=2.35.39,<2.35.40)", "ubelt", "waymo-open-dataset-tf-2-1-0 (==1.2.0)", "xdoctest (>=0.10.0)", "yapf"]
-mim = ["mmcv-full (>=1.4.8,<=1.6.0)", "mmdet (>=2.24.0,<=3.0.0)", "mmsegmentation (>=0.20.0,<=1.0.0)"]
-optional = ["open3d", "spconv", "waymo-open-dataset-tf-2-1-0 (==1.2.0)"]
-tests = ["asynctest", "codecov", "flake8", "interrogate", "isort", "kwarray", "pytest", "pytest-cov", "pytest-runner", "ubelt", "xdoctest (>=0.10.0)", "yapf"]
+all = ["asynctest", "black (==20.8b1)", "codecov", "flake8", "interrogate", "isort", "kwarray", "lyft_dataset_sdk", "networkx (>=2.5)", "numba", "numpy", "nuscenes-devkit", "open3d", "parameterized", "plyfile", "pytest", "pytest-cov", "pytest-runner", "scikit-image", "tensorboard", "trimesh", "typing-extensions", "ubelt", "waymo-open-dataset-tf-2-6-0", "xdoctest (>=0.10.0)", "yapf"]
+mim = ["mmcv (>=2.0.0rc4,<2.1.0)", "mmdet (>=3.0.0,<3.1.0)", "mmengine (>=0.7.1,<1.0.0)"]
+optional = ["black (==20.8b1)", "typing-extensions", "waymo-open-dataset-tf-2-6-0"]
+tests = ["asynctest", "codecov", "flake8", "interrogate", "isort", "kwarray", "parameterized", "pytest", "pytest-cov", "pytest-runner", "ubelt", "xdoctest (>=0.10.0)", "yapf"]
 
 [package.source]
 type = "directory"
@@ -2480,30 +2487,22 @@ files = [
 
 [[package]]
 name = "networkx"
-version = "2.2"
+version = "3.1"
 description = "Python package for creating and manipulating graphs and networks"
 category = "main"
 optional = false
-python-versions = "*"
+python-versions = ">=3.8"
 files = [
-    {file = "networkx-2.2.zip", hash = "sha256:45e56f7ab6fe81652fb4bc9f44faddb0e9025f469f602df14e3b2551c2ea5c8b"},
+    {file = "networkx-3.1-py3-none-any.whl", hash = "sha256:4f33f68cb2afcf86f28a45f43efc27a9386b535d567d2127f8f61d51dec58d36"},
+    {file = "networkx-3.1.tar.gz", hash = "sha256:de346335408f84de0eada6ff9fafafff9bcda11f0a0dfaa931133debb146ab61"},
 ]
 
-[package.dependencies]
-decorator = ">=4.3.0"
-
 [package.extras]
-all = ["gdal", "lxml", "matplotlib", "nose", "numpy", "pandas", "pydot", "pygraphviz", "pyyaml", "scipy"]
-gdal = ["gdal"]
-lxml = ["lxml"]
-matplotlib = ["matplotlib"]
-nose = ["nose"]
-numpy = ["numpy"]
-pandas = ["pandas"]
-pydot = ["pydot"]
-pygraphviz = ["pygraphviz"]
-pyyaml = ["pyyaml"]
-scipy = ["scipy"]
+default = ["matplotlib (>=3.4)", "numpy (>=1.20)", "pandas (>=1.3)", "scipy (>=1.8)"]
+developer = ["mypy (>=1.1)", "pre-commit (>=3.2)"]
+doc = ["nb2plots (>=0.6)", "numpydoc (>=1.5)", "pillow (>=9.4)", "pydata-sphinx-theme (>=0.13)", "sphinx (>=6.1)", "sphinx-gallery (>=0.12)", "texext (>=0.6.7)"]
+extra = ["lxml (>=4.6)", "pydot (>=1.4.2)", "pygraphviz (>=1.10)", "sympy (>=1.10)"]
+test = ["codecov (>=2.1)", "pytest (>=7.2)", "pytest-cov (>=4.0)"]
 
 [[package]]
 name = "notebook"
@@ -2560,33 +2559,33 @@ test = ["pytest", "pytest-console-scripts", "pytest-jupyter", "pytest-tornasync"
 
 [[package]]
 name = "numba"
-version = "0.53.0"
+version = "0.53.1"
 description = "compiling Python code using LLVM"
 category = "main"
 optional = false
 python-versions = ">=3.6,<3.10"
 files = [
-    {file = "numba-0.53.0-cp36-cp36m-macosx_10_14_x86_64.whl", hash = "sha256:83f7667e458a673661384f1434eb2930b3967985c5189dbfe2b04ff186f43b38"},
-    {file = "numba-0.53.0-cp36-cp36m-manylinux2014_i686.whl", hash = "sha256:68d9297d8f193d3168bc644b10c4581aacc65cdb8d952112dbd0eda97153a6e9"},
-    {file = "numba-0.53.0-cp36-cp36m-manylinux2014_x86_64.whl", hash = "sha256:0b9fd3b58cf2dcffff9e53c0350ee22b358949e374761e96227a96841e7a34ea"},
-    {file = "numba-0.53.0-cp36-cp36m-win32.whl", hash = "sha256:9c7bbc68bfb40c04a8550cc16a2eb28c8401ff980b201297d9869bcf2974ccbd"},
-    {file = "numba-0.53.0-cp36-cp36m-win_amd64.whl", hash = "sha256:ea484a26c11c2e50ce61af13b1c628eb3266c1121d38e3692313a2b7985570e8"},
-    {file = "numba-0.53.0-cp37-cp37m-macosx_10_14_x86_64.whl", hash = "sha256:7a30c8932a4efd0151c527e7e31fde45b8de0c87bc99190f0b5738dd1829bef3"},
-    {file = "numba-0.53.0-cp37-cp37m-manylinux2014_i686.whl", hash = "sha256:4b2c3e3e076179da82b0b36d34264f19cc122a6e8f9dd9bb9a1e7f22f9c2b35e"},
-    {file = "numba-0.53.0-cp37-cp37m-manylinux2014_x86_64.whl", hash = "sha256:f9bd6f6512eae91fd5e7fbbb8a970b00620fa00d3c525736f2bfc9c7e4eb1622"},
-    {file = "numba-0.53.0-cp37-cp37m-win32.whl", hash = "sha256:6ebc15da40da4401b826d335e659dc0176f973f3f45797c9c19c8471d87a7f0c"},
-    {file = "numba-0.53.0-cp37-cp37m-win_amd64.whl", hash = "sha256:18ba35ac8252a13376d94dc66176e18864e666d83af671025dfb87f482baed56"},
-    {file = "numba-0.53.0-cp38-cp38-macosx_10_14_x86_64.whl", hash = "sha256:e48464eff161b1374a2e6d5c595ee66eaf2295e2135d376d1b57e882db3d1a3b"},
-    {file = "numba-0.53.0-cp38-cp38-manylinux2014_i686.whl", hash = "sha256:be5296deeec0cdca3a185a7f45bff3cd91ab7b3e3af7113c8d6bbe478e709c9c"},
-    {file = "numba-0.53.0-cp38-cp38-manylinux2014_x86_64.whl", hash = "sha256:b7ae74a8edf6c43fe6194b3d4b227cb5761057c16c9f458402873f842b4fa322"},
-    {file = "numba-0.53.0-cp38-cp38-win32.whl", hash = "sha256:30b200b555afe987bb27fa3c9ea0f13af46b69205e379ae63307e76742c87aa8"},
-    {file = "numba-0.53.0-cp38-cp38-win_amd64.whl", hash = "sha256:5d90b36299d1b18c111b109821aaeb7895c3553830da81e6a65208b80fcebcaa"},
-    {file = "numba-0.53.0-cp39-cp39-macosx_10_14_x86_64.whl", hash = "sha256:9a377056b5ecba320272e2f9ad0c51fd8f04bbc84a20f0d1c206477e74de6040"},
-    {file = "numba-0.53.0-cp39-cp39-manylinux2014_i686.whl", hash = "sha256:3aa0f037ea11b54e70aa757862883f4683f89eb54d5dc931c6abf5effc2987a1"},
-    {file = "numba-0.53.0-cp39-cp39-manylinux2014_x86_64.whl", hash = "sha256:aadc083ccdbdee4375379fb3f70e7d3826007bee110f5da7a4cce3f53208d110"},
-    {file = "numba-0.53.0-cp39-cp39-win32.whl", hash = "sha256:ed7b0652007a33e2b3052e16744805f0d43ad41abf3c716b588c4be7547c5c3d"},
-    {file = "numba-0.53.0-cp39-cp39-win_amd64.whl", hash = "sha256:c8e12d71db168bc82acde1323efc808b399c04185461a2947e27330ab18683f6"},
-    {file = "numba-0.53.0.tar.gz", hash = "sha256:55c11d7edbba2ba715f2b56f5294cad55cfd87bff98e2627c3047c2d5cc52d16"},
+    {file = "numba-0.53.1-cp36-cp36m-macosx_10_14_x86_64.whl", hash = "sha256:b23de6b6837c132087d06b8b92d343edb54b885873b824a037967fbd5272ebb7"},
+    {file = "numba-0.53.1-cp36-cp36m-manylinux2014_i686.whl", hash = "sha256:6545b9e9b0c112b81de7f88a3c787469a357eeff8211e90b8f45ee243d521cc2"},
+    {file = "numba-0.53.1-cp36-cp36m-manylinux2014_x86_64.whl", hash = "sha256:8fa5c963a43855050a868106a87cd614f3c3f459951c8fc468aec263ef80d063"},
+    {file = "numba-0.53.1-cp36-cp36m-win32.whl", hash = "sha256:aaa6ebf56afb0b6752607b9f3bf39e99b0efe3c1fa6849698373925ee6838fd7"},
+    {file = "numba-0.53.1-cp36-cp36m-win_amd64.whl", hash = "sha256:b08b3df38aab769df79ed948d70f0a54a3cdda49d58af65369235c204ec5d0f3"},
+    {file = "numba-0.53.1-cp37-cp37m-macosx_10_14_x86_64.whl", hash = "sha256:bf5c463b62d013e3f709cc8277adf2f4f4d8cc6757293e29c6db121b77e6b760"},
+    {file = "numba-0.53.1-cp37-cp37m-manylinux2014_i686.whl", hash = "sha256:74df02e73155f669e60dcff07c4eef4a03dbf5b388594db74142ab40914fe4f5"},
+    {file = "numba-0.53.1-cp37-cp37m-manylinux2014_x86_64.whl", hash = "sha256:5165709bf62f28667e10b9afe6df0ce1037722adab92d620f59cb8bbb8104641"},
+    {file = "numba-0.53.1-cp37-cp37m-win32.whl", hash = "sha256:2e96958ed2ca7e6d967b2ce29c8da0ca47117e1de28e7c30b2c8c57386506fa5"},
+    {file = "numba-0.53.1-cp37-cp37m-win_amd64.whl", hash = "sha256:276f9d1674fe08d95872d81b97267c6b39dd830f05eb992608cbede50fcf48a9"},
+    {file = "numba-0.53.1-cp38-cp38-macosx_10_14_x86_64.whl", hash = "sha256:4c4c8d102512ae472af52c76ad9522da718c392cb59f4cd6785d711fa5051a2a"},
+    {file = "numba-0.53.1-cp38-cp38-manylinux2014_i686.whl", hash = "sha256:691adbeac17dbdf6ed7c759e9e33a522351f07d2065fe926b264b6b2c15fd89b"},
+    {file = "numba-0.53.1-cp38-cp38-manylinux2014_x86_64.whl", hash = "sha256:94aab3e0e9e8754116325ce026e1b29ae72443c706a3104cf7f3368dc3012912"},
+    {file = "numba-0.53.1-cp38-cp38-win32.whl", hash = "sha256:aabeec89bb3e3162136eea492cea7ee8882ddcda2201f05caecdece192c40896"},
+    {file = "numba-0.53.1-cp38-cp38-win_amd64.whl", hash = "sha256:1895ebd256819ff22256cd6fe24aa8f7470b18acc73e7917e8e93c9ac7f565dc"},
+    {file = "numba-0.53.1-cp39-cp39-macosx_10_14_x86_64.whl", hash = "sha256:224d197a46a9e602a16780d87636e199e2cdef528caef084a4d8fd8909c2455c"},
+    {file = "numba-0.53.1-cp39-cp39-manylinux2014_i686.whl", hash = "sha256:aba7acb247a09d7f12bd17a8e28bbb04e8adef9fc20ca29835d03b7894e1b49f"},
+    {file = "numba-0.53.1-cp39-cp39-manylinux2014_x86_64.whl", hash = "sha256:bd126f1f49da6fc4b3169cf1d96f1c3b3f84a7badd11fe22da344b923a00e744"},
+    {file = "numba-0.53.1-cp39-cp39-win32.whl", hash = "sha256:0ef9d1f347b251282ae46e5a5033600aa2d0dfa1ee8c16cb8137b8cd6f79e221"},
+    {file = "numba-0.53.1-cp39-cp39-win_amd64.whl", hash = "sha256:17146885cbe4e89c9d4abd4fcb8886dee06d4591943dc4343500c36ce2fcfa69"},
+    {file = "numba-0.53.1.tar.gz", hash = "sha256:9cd4e5216acdc66c4e9dab2dfd22ddb5bef151185c070d4a3cd8e78638aff5b0"},
 ]
 
 [package.dependencies]
@@ -4297,13 +4296,13 @@ doc = ["reno", "sphinx", "tornado (>=4.5)"]
 
 [[package]]
 name = "tensorboard"
-version = "2.12.2"
+version = "2.12.3"
 description = "TensorBoard lets you watch Tensors Flow"
 category = "main"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "tensorboard-2.12.2-py3-none-any.whl", hash = "sha256:811ab0d27a139445836db9fd4f974424602c3dce12379364d379bcba7c783a68"},
+    {file = "tensorboard-2.12.3-py3-none-any.whl", hash = "sha256:b4a69366784bc347e02fbe7d847e01896a649ca52f8948a11005e205dcf724fb"},
 ]
 
 [package.dependencies]
@@ -4317,7 +4316,6 @@ protobuf = ">=3.19.6"
 requests = ">=2.21.0,<3"
 setuptools = ">=41.0.0"
 tensorboard-data-server = ">=0.7.0,<0.8.0"
-tensorboard-plugin-wit = ">=1.6.0"
 werkzeug = ">=1.0.1"
 wheel = ">=0.26"
 
@@ -4332,17 +4330,6 @@ files = [
     {file = "tensorboard_data_server-0.7.0-py3-none-any.whl", hash = "sha256:753d4214799b31da7b6d93837959abebbc6afa86e69eacf1e9a317a48daa31eb"},
     {file = "tensorboard_data_server-0.7.0-py3-none-macosx_10_9_x86_64.whl", hash = "sha256:eb7fa518737944dbf4f0cf83c2e40a7ac346bf91be2e6a0215de98be74e85454"},
     {file = "tensorboard_data_server-0.7.0-py3-none-manylinux2014_x86_64.whl", hash = "sha256:64aa1be7c23e80b1a42c13b686eb0875bb70f5e755f4d2b8de5c1d880cf2267f"},
-]
-
-[[package]]
-name = "tensorboard-plugin-wit"
-version = "1.8.1"
-description = "What-If Tool TensorBoard plugin."
-category = "main"
-optional = false
-python-versions = "*"
-files = [
-    {file = "tensorboard_plugin_wit-1.8.1-py3-none-any.whl", hash = "sha256:ff26bdd583d155aa951ee3b152b3d0cffae8005dc697f72b44a8e8c2a77a8cbe"},
 ]
 
 [[package]]
@@ -4571,24 +4558,23 @@ test = ["argcomplete (>=2.0)", "pre-commit", "pytest", "pytest-mock"]
 
 [[package]]
 name = "trimesh"
-version = "2.35.39"
+version = "3.21.5"
 description = "Import, export, process, analyze and view triangular meshes."
 category = "main"
 optional = false
 python-versions = "*"
 files = [
-    {file = "trimesh-2.35.39.tar.gz", hash = "sha256:e0877d765381bf45d820ac47d7e04d108c133149a53526e34e125c2bdafdea88"},
+    {file = "trimesh-3.21.5-py3-none-any.whl", hash = "sha256:5ae1ca5e4f4a5f41aa79067a9c39e083e37d7148022bb150cb0e6f89ec614df3"},
+    {file = "trimesh-3.21.5.tar.gz", hash = "sha256:74741bc7f9fcb94b98951db8dc8ec8364a2ef52ac2ca0761c7ba06182ef329be"},
 ]
 
 [package.dependencies]
-networkx = "*"
 numpy = "*"
-scipy = "*"
 
 [package.extras]
-all = ["colorlog", "lxml", "msgpack", "pillow", "pyglet", "python-fcl", "requests", "rtree", "setuptools", "shapely", "svg.path", "sympy", "triangle", "xxhash"]
-easy = ["colorlog", "lxml", "msgpack", "pillow", "pyglet", "requests", "rtree", "shapely", "svg.path", "sympy", "xxhash"]
-test = ["coveralls", "pytest", "pytest-cov"]
+all = ["chardet", "colorlog", "glooey", "jsonschema", "lxml", "mapbox-earcut", "meshio", "networkx", "pillow", "psutil", "pycollada", "pyglet (<2)", "python-fcl", "requests", "rtree", "scikit-image", "scipy", "setuptools", "shapely", "svg.path", "sympy", "xatlas", "xxhash"]
+easy = ["chardet", "colorlog", "jsonschema", "lxml", "mapbox-earcut", "networkx", "pillow", "pycollada", "requests", "rtree", "scipy", "setuptools", "shapely", "svg.path", "sympy", "xxhash"]
+test = ["autopep8", "coveralls", "ezdxf", "pyinstrument", "pytest", "pytest-cov", "ruff"]
 
 [[package]]
 name = "typing-extensions"
