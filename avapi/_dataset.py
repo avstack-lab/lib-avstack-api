@@ -20,7 +20,7 @@ from avstack.geometry import (
     bbox,
     get_origin_from_line,
     q_cam_to_stan,
-    Vector
+    VectorDirMag
 )
 from avstack.geometry import transformations as tforms
 from cv2 import imread
@@ -159,15 +159,33 @@ class BaseSceneDataset:
             sensor = self.sensors["lidar"]
         sensor = self.get_sensor_name(sensor)
         ts = self.get_timestamp(frame, sensor)
+        calib = self.get_calibration(frame, sensor)
         data = self._load_lidar(
             frame, sensor, filter_front=filter_front, with_panoptic=with_panoptic
         )
-        calib = self.get_calibration(frame, sensor)
         pc = sensors.LidarData(ts, frame, data, calib, self.get_sensor_ID(sensor))
         if (min_range is not None) or (max_range is not None):
             pc.filter_by_range(min_range, max_range, inplace=True)
         return pc
 
+    def get_radar(
+        self,
+        frame,
+        sensor=None,
+        min_range=None,
+        max_range=None,
+    ):
+        if sensor is None:
+            sensor = self.sensors["radar"]
+        sensor = self.get_sensor_name(sensor)
+        ts = self.get_timestamp(frame, sensor)
+        calib = self.get_calibration(frame, sensor)
+        data = self._load_radar(frame, sensor)  # razelrrt data
+        rad = sensors.RadarDataRazelRRT(ts, frame, data, calib, self.get_sensor_ID(sensor))
+        if (min_range is not None) or (max_range is not None):
+            rad.filter_by_range(min_range, max_range, inplace=True)
+        return rad
+    
     def get_objects(self, frame, sensor="main_camera", max_dist=None, max_occ=None, **kwargs):
         sensor = self.get_sensor_name(sensor)
         objs = self._load_objects(frame, sensor=sensor, **kwargs)
@@ -577,7 +595,6 @@ class _nuBaseDataset(BaseSceneDataset):
         sd_record = self._get_sensor_record(frame, sensor)
         ego_data = self.nuX.get("ego_pose", sd_record["ego_pose_token"])
         # -- get ego velocity
-        raise NotImplementedError
         ts = ego_data["timestamp"] / 1e6 - self.t0
         line = self._ego_to_line(ts, ego_data)
         return self.parse_label_line(line)
@@ -616,7 +633,7 @@ class _nuBaseDataset(BaseSceneDataset):
                 ts = sensor_data["timestamp"]
                 line = self._box_to_line(ts, box["box"], origin)
                 obj = self.parse_label_line(line)
-                velocity = Vector(vel, origin=ego.origin)
+                velocity = VectorDirMag(vel, origin=ego.origin)
                 velocity.change_origin(obj.origin)
                 obj.velocity = velocity
                 objects.append(obj)

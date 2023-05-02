@@ -6,10 +6,12 @@ import numpy as np
 from PIL import Image
 from avapi.evaluation import parse_color_string
 
+import avstack
 from avstack import maskfilters
 from avstack.datastructs import DataContainer
 from avstack.environment.objects import VehicleState
 from avstack.geometry import Box2D, Box3D, NominalOriginStandard, bbox
+from avstack.geometry.transformations import project_to_image
 from avstack.modules.perception.detections import BoxDetection, MaskDetection
 from .base import draw_projected_box3d, get_lidar_color
 
@@ -150,6 +152,11 @@ def show_image_with_boxes(
                     img.calibration, squeeze=True
                 )
                 img1 = draw_projected_box3d(img1, corners_3d_in_image, color=col)
+        elif isinstance(box, (avstack.modules.tracking.tracks.XyzFromRazelTrack)):
+            pts_box = np.array([[-box.x[1], -box.x[2], box.x[0]]])
+            pt = project_to_image(pts_box, img.calibration.P)[0]
+            radius = 6
+            cv2.circle(img1, (int(pt[0]), int(pt[1])), radius, color=(0,255,0), thickness=-1)
         else:
             raise NotImplementedError(type(box))
         if addbox:
@@ -190,6 +197,7 @@ def show_objects_on_image(img, objects, projection="2d", **kwargs):
 def show_lidar_bev_with_boxes(
     point_cloud,
     boxes=[],
+    vectors=[],
     extent=None,
     ground=None,
     box_colors="white",
@@ -226,7 +234,7 @@ def show_lidar_bev_with_boxes(
 
         # Filter labels outside extent
         for box in boxes:
-            box.change_origin(NominalOriginStandard)
+            box.change_origin(point_cloud.calibration.origin)
         box_filter = maskfilters.filter_boxes_extent(boxes, extent)
         boxes = boxes[box_filter]
         if type(box_colors) in [list, np.ndarray]:
@@ -235,10 +243,16 @@ def show_lidar_bev_with_boxes(
         pc2 = point_cloud.data
 
     # Get maxes and mins
-    min_range = min(0, np.min(pc2[:, 0]))
-    max_range = max(min_range + 10.0, np.max(pc2[:, 0]))
-    min_width = np.min(pc2[:, 1])
-    max_width = max(min_width + 2.0, np.max(pc2[:, 1]))
+    if pc2.shape[0] > 0:
+        min_range = min(0, np.min(pc2[:, 0]))
+        max_range = max(min_range + 10.0, np.max(pc2[:, 0]))
+        min_width = np.min(pc2[:, 1])
+        max_width = max(min_width + 2.0, np.max(pc2[:, 1]))
+    else:
+        min_range = 0
+        max_range = 0
+        min_width = 0
+        max_width = 0
 
     boxes_show = []
     boxes_show_corners = []
@@ -314,9 +328,17 @@ def show_lidar_bev_with_boxes(
         box3d_pts_2d = (bev_corners - min_arr) / sc_arr
         img1 = draw_projected_box3d(img1, box3d_pts_2d, color=lcolor, thickness=2)
 
+    # Add tracks
+    for i, vec in enumerate(vectors):
+        vec.change_origin(point_cloud.calibration.origin)
+        head = (vec.head.vector[:2] - min_arr) / sc_arr
+        tail = (vec.tail.vector[:2] - min_arr) / sc_arr
+        color = (0, 255, 0)
+        thickness = 4
+        img1 = cv2.arrowedLine(img1, tuple(map(int, head)), tuple(map(int, tail)), color, thickness)
+
     # Add lines to the image if passed in
     if lines is not None:
-
         def plot_line(img1, line, line_color):
             """Assume line is a 2xn array"""
             color = parse_color_string(line_color)

@@ -8,7 +8,6 @@ import logging
 import os
 from copy import copy, deepcopy
 
-import avstack
 import numpy as np
 from avstack.datastructs import DataContainer, DataManager
 from avstack.modules import prediction, tracking
@@ -64,9 +63,10 @@ def make_kitti_tracking_data(KDM, idx_frame, dt=0.1, n_frames=10):
 
 def run_tracker(tracker, det_manager, predictor=None):
     frame = 0
+    dt = 0.1
     while not det_manager.empty():
         dets = det_manager.pop(name_3d)
-        tracks = tracker(dets, frame=frame, identifier='tracker-0')
+        tracks = tracker(detections_nd=dets, t=frame*dt, frame=frame, identifier='tracker-0')
         if predictor is not None:
             predictions = predictor(tracks, frame=frame)
         frame += 1
@@ -79,7 +79,7 @@ def test_eval_tracks():
     if KDM_train is not None:
         # track
         detections = make_kitti_tracking_data(KDM_train, 100, n_frames=10)
-        tracker = tracking.tracker3d.BasicBoxTracker(
+        tracker = tracking.tracker3d.BasicBoxTracker3D(
             framerate=10, save_output=True, save_folder=save_folder
         )
         tracks = run_tracker(tracker, detections)
@@ -102,7 +102,7 @@ def test_eval_preds():
     if KDM_train is not None:
         # track
         detections = make_kitti_tracking_data(KDM_train, 100, n_frames=10)
-        tracker = tracking.tracker3d.BasicBoxTracker(
+        tracker = tracking.tracker3d.BasicBoxTracker3D(
             framerate=10, save_output=True, save_folder=save_folder
         )
         predictor = prediction.KinematicPrediction(

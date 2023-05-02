@@ -6,6 +6,7 @@
 
 import glob
 import os
+import logging
 
 import numpy as np
 from avstack.modules.assignment import gnn_single_frame_assign
@@ -159,11 +160,14 @@ class TrackResultsAnalyzer(ResultAnalyzer):
             whitelist_types=whitelist_types,
             max_dist=max_dist,
         )
-        eval_results = evaluator.evaluate([ds], [HOTA(), CLEAR(), VACE(), IDEucl()])
-
-        # Expand metrics
-        mets = eval_results[0]["AvstackTrackDataset"][tracker_name][DM.sequence_id]["all_objects"]
-        mets = {"{}_{}".format(k1, k2): v2 for k1 in mets for k2, v2 in mets[k1].items()} 
+        try:
+            eval_results = evaluator.evaluate([ds], [HOTA(), CLEAR(), VACE(), IDEucl()])
+        except ValueError:
+            logging.warning('Obtained value error during evaluation...skipping')
+            mets = {}
+        else:
+            mets = eval_results[0]["AvstackTrackDataset"][tracker_name][DM.sequence_id]["all_objects"]
+            mets = {"{}_{}".format(k1, k2): v2 for k1 in mets for k2, v2 in mets[k1].items()} 
         return mets
 
 
