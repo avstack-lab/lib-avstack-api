@@ -245,7 +245,7 @@ class KittiObjectDataset(BaseSceneDataset):
             P = np.reshape(
                 calib_data["P%s" % sensor.lower().replace("image-", "")], [3, 4]
             )
-            calib = calibration.CameraCalibration(origin, P, img_shape)
+            calib = calibration.CameraCalibration(origin, P, img_shape, channel_order='bgr')
         elif "lidar" in sensor.lower():
             # -- get transform from cam 0 to lidar
             R_velo_to_cam0 = np.reshape(calib_data["Tr_velo_to_cam"], [3, 4])[:3, :3]
@@ -274,7 +274,7 @@ class KittiObjectDataset(BaseSceneDataset):
                 self.folder_names["image-%i" % sensor],
                 "%06d.png" % frame,
             )
-        return imread(img_fname)[:, :, ::-1]
+        return imread(img_fname)
 
     def _load_lidar(self, frame, sensor, **kwargs):
         filter_front = True  # always filter KITTI to front-only
@@ -369,7 +369,8 @@ class KittiScenesManager(BaseSceneManager):
 
     NAME = "Kitti"
 
-    def __init__(self, data_dir, raw_data_dir=None, convert_raw=False):
+    def __init__(self, data_dir, raw_data_dir=None, convert_raw=False, verbose=False):
+        self.verbose = verbose
         self.data_dir = data_dir
 
         # scenes are tuples of (date, index) mapped to numbers
