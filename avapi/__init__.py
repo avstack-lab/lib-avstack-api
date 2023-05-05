@@ -25,6 +25,8 @@ def get_scene_manager(dataset, data_dir, split, verbose=False):
         SM = avapi.kitti.KittiScenesManager
     elif ds == "nuscenes":
         SM = avapi.nuscenes.nuScenesManager
+    elif ds == "carla":
+        SM = avapi.carla.CarlaScenesManager
     else:
         raise NotImplementedError
     return SM(data_dir, split, verbose=verbose)

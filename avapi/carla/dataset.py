@@ -41,7 +41,7 @@ class CarlaScenesManager(BaseSceneManager):
     nominal_whitelist_types = _nominal_whitelist_types
     nominal_ignore_types = _nominal_ignore_types
 
-    def __init__(self, data_dir, verbose=False):
+    def __init__(self, data_dir, split=None, verbose=False):
         """
         data_dir: the base folder where all scenes are kept
         """
@@ -155,6 +155,7 @@ class CarlaSceneDataset(BaseSceneDataset):
         self.sensor_frames = sensor_frames
         self.file_endings = file_endings
         self.sensor_IDs = sensor_IDs
+        self.framerate = 1 / np.median(np.diff(list(self.sensor_frame_to_ts[self.sensors['main_camera']].values())))
         super().__init__(whitelist_types, ignore_types)
 
     @property
@@ -273,7 +274,7 @@ class CarlaSceneDataset(BaseSceneDataset):
         )
         assert os.path.exists(filepath), filepath
         try:
-            return imread(filepath)[:, :, ::-1]  # put in RGB order
+            return imread(filepath)
         except TypeError as e:
             print(filepath)
             raise e
@@ -286,7 +287,7 @@ class CarlaSceneDataset(BaseSceneDataset):
         )
         assert os.path.exists(filepath), filepath
         try:
-            return imread(filepath)[:, :, ::-1]  # put in RGB order
+            return imread(filepath)
         except TypeError as e:
             print(filepath)
             raise e

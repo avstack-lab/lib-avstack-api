@@ -8,4 +8,4 @@
 
 """
 
-from .dataset import CarlaScenesManager, get_splits_scenes
+from .dataset import CarlaScenesManager
