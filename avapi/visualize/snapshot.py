@@ -50,6 +50,9 @@ def show_lidar_on_image(
     import matplotlib.pyplot as plt
 
     img1 = np.copy(img.data)
+    if img.calibration.channel_order == 'bgr':
+        img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2RGB)
+
     box2d_image = bbox.Box2D([0, 0, img1.shape[1], img1.shape[0]], img.calibration)
     points_in_view_filter = maskfilters.filter_points_in_image_frustum(
         pc, box2d_image, img.calibration
@@ -100,6 +103,8 @@ def show_image_with_boxes(
 ):
     """Show image with bounding boxes"""
     img1 = np.copy(img.data)
+    if img.calibration.channel_order == 'bgr':
+        img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2RGB)
 
     # Make appropriate types
     if isinstance(boxes, list):
