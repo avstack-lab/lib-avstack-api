@@ -27,7 +27,7 @@ def check_xor_for_none(a, b):
 
 def get_splits_scenes(data_dir, modval=4, seed=1):
     CSM = CarlaScenesManager(data_dir)
-    return make_splits_scenes(CSM, modval=modval, seed=seed)
+    return CSM.make_splits_scenes(modval=modval, seed=seed)
 
 
 # _nominal_whitelist_types = ['car', 'pedestrian', 'bicycle',
