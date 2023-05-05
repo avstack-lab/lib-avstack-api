@@ -1,6 +1,6 @@
 # AVstack API
 
-This is the API library of `AVstack`.  It relies on both [`avstack-core`][avstack-core] and having access to integrated datasets/simulators. [This preprint][avstack-preprint] accompanies the repository.
+This is the API library of `AVstack`.  It relies on both [`avstack-core`][avstack-core] and having access to integrated datasets/simulators. `AVstack` was published and presented at ICCPS 2023 - [find the paper here][avstack-preprint] that accompanies the repository.
 
 ## Philosophy
 
