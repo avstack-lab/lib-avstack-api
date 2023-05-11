@@ -120,7 +120,7 @@ def show_image_with_boxes(
     elif isinstance(box_colors, str):
         box_colors = [box_colors] * len(boxes)
 
-    # show each box
+    # Show each box
     mask = None
     for i, (box, col) in enumerate(zip(boxes, box_colors)):
         if isinstance(col, str):

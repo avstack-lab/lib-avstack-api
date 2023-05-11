@@ -40,6 +40,10 @@ class BaseSceneManager:
     def __len__(self):
         return len(self.scenes)
 
+    @property
+    def name():
+        return self.NAME
+
     def list_scenes(self):
         print(self.scenes)
 
@@ -83,6 +87,10 @@ class BaseSceneDataset:
 
     def __len__(self):
         return len(self.frames)
+
+    @property
+    def name():
+        return self.NAME
 
     @property
     def frames(self):
