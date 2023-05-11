@@ -476,7 +476,7 @@ _nominal_whitelist_types = [
 _nominal_ignore_types = []
 
 
-class _nuManager(BaseSceneDataset):
+class _nuManager(BaseSceneManager):
     nominal_whitelist_types = _nominal_whitelist_types
     nominal_ignore_types = _nominal_ignore_types
 
