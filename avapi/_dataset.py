@@ -23,6 +23,7 @@ from avstack.geometry import (
     VectorDirMag
 )
 from avstack.geometry import transformations as tforms
+from avstack.modules.tracking.tracks import get_track_from_line
 from cv2 import imread
 
 
@@ -271,7 +272,10 @@ class BaseSceneDataset:
             lines = [line.rstrip() for line in f.readlines()]
         objects = []
         for line in lines:
-            obj = self.parse_label_line(line)
+            if "track" in line:
+                obj = get_track_from_line(line)
+            else:
+                obj = self.parse_label_line(line)
             # -- type filter
             if ("all" in whitelist_types) or (obj.obj_type.lower() in whitelist_types):
                 if obj.obj_type.lower() in ignore_types:
@@ -317,7 +321,7 @@ class BaseSceneDataset:
     def parse_label_line(self, label_file_line):
         # Parse data elements
         data = label_file_line.strip("\n").split(" ")
-        if data[0] in ["avstack", "nuscenes"]:
+        if (data[0] in ["avstack", "nuscenes"]):
             idx = 2
             ts = data[idx]
             idx += 1
@@ -377,7 +381,7 @@ class BaseSceneDataset:
             q_O_to_V = object_origin.q.conjugate()
             q_O_to_obj = q_V_to_obj * q_O_to_V
 
-        else:  # assume kitti with no prefix -- this is for kitti static dataset
+        elif data[0] == "kitti":  # assume kitti with no prefix -- this is for kitti static dataset
             ts = 0.0
             ID = np.random.randint(low=0, high=1e6)  # not ideal but ensures unique IDs
             obj_type = data[0]
@@ -393,6 +397,9 @@ class BaseSceneDataset:
             q_Ccam_to_Cstan = q_cam_to_stan
             q_Cstan_to_obj = tforms.transform_orientation([0, 0, yaw], "euler", "quat")
             q_O_to_obj = q_Cstan_to_obj * q_Ccam_to_Cstan
+
+        else:
+            raise NotImplementedError(data)
 
         # Put into objects
         t_box = np.array([float(t) for t in t_box])

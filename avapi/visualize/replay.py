@@ -169,6 +169,7 @@ def replay_track_results(
     show_truth=False,
     save_video=False,
     video_file="track_movie.avi",
+    **kwargs,
 ):
     """Tracks without showing perception data
     extent in standard (lidar) coordinates
@@ -203,7 +204,7 @@ def replay_track_results(
     trk_preds = {}  # ID: frame: dt_future: pt
 
     for idx, tr in track_results.items():
-        for track in tr['result'].tracks:
+        for track in tr.tracks:
             if isinstance(track, VehicleState):
                 track.change_origin(NominalOriginStandard)
                 if track.ID not in trk_points:
@@ -216,7 +217,7 @@ def replay_track_results(
                         trk_preds[track.ID][idx][dt_f] = track.predict(dt_f).box3d.t
                 else:
                     raise NotImplementedError(type(track))
-        for truth in tr['result'].truths:
+        for truth in tr.truths:
             if isinstance(truth, VehicleState):
                 truth.change_origin(NominalOriginStandard)
 
@@ -268,8 +269,7 @@ def replay_track_results(
                     axs_slider.add_patch(rect)
                 else:
                     if "bev" in projection:
-                        assert track.filter.x_vector.coordinates == StandardCoordinates
-                        x_vec = track.filter.x_vector
+                        x_vec = track.x
                         axs_slider.scatter(x_vec[0], x_vec[1], s=10, color=col)
                     elif "fv" in projection:
                         raise NotImplementedError
@@ -286,11 +286,11 @@ def replay_track_results(
         # -- show true objects and tracks
         if idx in track_results:
             plot_tracks(
-                track_results[idx]['result'].colors["detections"],
-                track_results[idx]['result'].tracks
+                track_results[idx].colors["detections"],
+                track_results[idx].tracks
             )
-            plot_tracks(track_results[idx]['result'].colors["truths"],
-                        track_results[idx]['result'].truths)
+            plot_tracks(track_results[idx].colors["truths"],
+                        track_results[idx].truths)
 
         # -- add lines
         if show_track_lines:
@@ -494,6 +494,7 @@ def replay_track_percep_results(
     figsize=(14, 8),
     save_video=False,
     video_file="track_percep_movie.avi",
+    **kwargs,
 ):
     """Uses 3D tracks and image data to create a video"""
     init = False
@@ -517,16 +518,16 @@ def replay_track_percep_results(
             idx = idxs_record[i_start + i]
             calib = DM.get_calibration(idx, sensor)
             track_boxes = []
-            for trk in track_results[idx]['result'].tracks:
+            for trk in track_results[idx].tracks:
                 trk_copy = deepcopy(trk)
                 trk_copy.change_origin(calib.origin)
                 track_boxes.append(trk_copy)
-            box_colors = track_results[idx]['result'].colors["detections"]
+            box_colors = track_results[idx].colors["detections"]
             if show_truth:
-                for truth in track_results[idx]['result'].truths:
+                for truth in track_results[idx].truths:
                     truth.box.change_origin(calib.origin)
                     track_boxes.append(truth)
-                box_colors.extend(track_results[idx]['result'].colors["truths"])
+                box_colors.extend(track_results[idx].colors["truths"])
         else:
             idx = i_start + i
             calib = DM.get_calibration(idx, sensor)
