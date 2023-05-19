@@ -22,13 +22,17 @@ mkdir -p "$DATAFOLDER"
 
 for DATA_PATH in ${DATA_PATHS[@]}
 do
-    wget -P "$DATAFOLDER" "$DATA_PATH"
-    if [ $? -eq 0 ]; then
-        shortname="${DATA_PATH##*/}"
-        unzip -o "$DATAFOLDER/$shortname" -d "$DATAFOLDER"
-        rm "${DATAFOLDER}/${shortname}"
+    shortname="${DATA_PATH##*/}"
+    fol_name="${shortname//data_object_/}"
+    fol_name="${fol_name//.zip/}"
+    fol_name="${fol_name%/}"
+    evidence="${DATAFOLDER}/training/${fol_name}/.full_download"
+    if [ -f "$evidence" ]; then
+        echo -e "$fol_name already downloaded.\n"
     else
-        echo "This download failed!!!"
+        wget -P "$DATAFOLDER" "$DATA_PATH"
+        unzip -o -d "$DATAFOLDER" "$DATAFOLDER/$shortname"
+        rm "${DATAFOLDER}/${shortname}"
+        touch $evidence
     fi
 done
-cd ../..

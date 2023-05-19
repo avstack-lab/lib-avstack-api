@@ -4,7 +4,7 @@ set -e
 
 
 DATAFOLDER=${1:-/data/$(whoami)}
-MAXFILES=${2:-38}
+MAXFILES=${2:-37}
 
 DATAFOLDER=${DATAFOLDER%/}
 DATAFOLDER="${DATAFOLDER}/KITTI/raw"
@@ -182,23 +182,34 @@ for FILE in ${files[@]}; do
                 shortname="${FILE}_sync.zip"
                 fullname="${FILE}/${FILE}_sync.zip"
                 IS_CALIB="false"
+                fol_name="${shortname//.zip/}"
+                date_str="${shortname%d*}"
+                date_str="${date_str%?}"
+                evidence="${DATAFOLDER}/${date_str}/${fol_name}/.full_download"
         else
                 shortname="$FILE"
                 fullname="$FILE"
                 IS_CALIB="true"
+                date_str="${shortname//_calib.zip/}"
+                evidence="${DATAFOLDER}/${date_str}/calib_cam_to_cam.txt"
         fi
-	echo "Downloading: ${shortname}"
-        wget -P "$DATAFOLDER" "https://s3.eu-central-1.amazonaws.com/avg-kitti/raw_data/${fullname}"
-        unzip -o "$DATAFOLDER/$shortname" -d "$DATAFOLDER"
-        rm "${DATAFOLDER}/${shortname}"
-        if [ "$IS_CALIB" = "true" ]; then
-                echo "Downloaded calibration file"
+        if [ -f "$evidence" ]; then
+                echo -e "Already downloaded ${shortname}\n"
         else
-                COUNT=$((COUNT+1))
-                echo "Downloaded $COUNT / $MAXFILES files!"
-                if [[ $COUNT -ge $MAXFILES ]]; then
-                        echo "Finished downloading $COUNT files"
-                        break
+                echo "Downloading: ${shortname}"
+                wget -P "$DATAFOLDER" "https://s3.eu-central-1.amazonaws.com/avg-kitti/raw_data/${fullname}"
+                unzip -o -d "$DATAFOLDER" "$DATAFOLDER/$shortname" 
+                rm "${DATAFOLDER}/${shortname}"
+                if [ "$IS_CALIB" = "true" ]; then
+                        echo "Downloaded calibration file"
+                else
+                        touch $evidence
                 fi
+        fi
+        COUNT=$((COUNT+1))
+        echo "Downloaded $COUNT / $MAXFILES files!"
+        if [[ $COUNT -ge $MAXFILES ]]; then
+                echo "Finished downloading $COUNT files"
+                break
         fi
 done

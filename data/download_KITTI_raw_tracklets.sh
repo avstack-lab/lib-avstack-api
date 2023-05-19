@@ -3,7 +3,7 @@
 set -e
 
 DATAFOLDER=${1:-/data/$(whoami)}
-MAXFILES=${2:-38}
+MAXFILES=${2:-37}
 
 DATAFOLDER=${DATAFOLDER%/}
 DATAFOLDER="${DATAFOLDER}/KITTI/raw"
@@ -57,16 +57,24 @@ for FILE in ${files[@]}; do
         then
                 shortname="${FILE}_tracklets.zip"
                 fullname="${FILE}/${FILE}_tracklets.zip"
+                fol_name="${FILE}_sync"
+                date_str="${shortname%d*}"
+                date_str="${date_str%?}"
+                evidence="${DATAFOLDER}/${date_str}/${fol_name}/tracklet_labels.xml"
         else
                 continue
         fi
-        echo "Downloading: "$shortname
-        wget -P "$DATAFOLDER" "https://s3.eu-central-1.amazonaws.com/avg-kitti/raw_data/${fullname}"
-        if [ $? -eq 0 ]; then
-                unzip -o "$DATAFOLDER/$shortname" -d "$DATAFOLDER"
-                rm "${DATAFOLDER}/${shortname}"
+        if [ -f "$evidence" ]; then
+                echo -e "Already downloaded ${shortname}\n"
         else
-                echo "This download failed!!!"
+                echo "Downloading: "$shortname
+                wget -P "$DATAFOLDER" "https://s3.eu-central-1.amazonaws.com/avg-kitti/raw_data/${fullname}"
+                if [ $? -eq 0 ]; then
+                        unzip -o "$DATAFOLDER/$shortname" -d "$DATAFOLDER"
+                        rm "${DATAFOLDER}/${shortname}"
+                else
+                        echo "This download failed!!!"
+                fi
         fi
         COUNT=$((COUNT+1))
         echo "Downloaded $COUNT / $MAXFILES files!"

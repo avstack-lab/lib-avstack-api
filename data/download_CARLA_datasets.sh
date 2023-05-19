@@ -14,7 +14,7 @@ DOWNLOAD="https://g-b0ef78.1d0d8d.03c0.data.globus.org/datasets/carla"
 if [ "$VERSION" = "object-v1" ]; then
     echo "Preparing to download object dataset..."
     SAVESUB="object-v1"
-    SUBDIR="object-v1"
+    SUBDIR="object_v1"
     files=(run_2022_10_27_10-20-59
         run_2022_10_27_10-27-53
         run_2022_10_27_10-34-42
@@ -31,7 +31,7 @@ if [ "$VERSION" = "object-v1" ]; then
 elif [ "$VERSION" = "collab-v1" ]; then
     echo "Preparing to download collaborative dataset v1..."
     SAVESUB="collaborative-v1"
-    SUBDIR="collaborative-v1"
+    SUBDIR="object_collaborative_v1"
     files=(run_2022_10_31_13-34-52
         run_2022_10_31_13-46-21
     	run_2022_10_31_13-57-59
@@ -41,7 +41,7 @@ elif [ "$VERSION" = "collab-v1" ]; then
 elif [ "$VERSION" = "collab-v2" ]; then
     echo "Preparindg to download collaborative dataset v2..."
     SAVESUB="collaborative-v2"
-    SUBDIR="collaborative-v2"
+    SUBDIR="object_collaborative_v2"
     files=(run_2022_10_24_22-00-08
         run_2022_10_24_22-10-34
         run_2022_10_24_22-21-45
@@ -52,7 +52,7 @@ elif [ "$VERSION" = "collab-v2" ]; then
         run_2022_10_24_23-18-43
     )
 else
-    echo "Cannot understand input version ${VERSION}! Currently can only use 'object-v1' and 'collab-v1'"
+    echo "Cannot understand input version ${VERSION}! Currently can only use 'object-v1' and 'collab-v1/v2'"
 fi
 
 SAVEFULL="${DATAFOLDER}/${SAVESUB}"
@@ -64,12 +64,33 @@ COUNT=0
 for FILE in ${files[@]}; do
     shortname="${FILE}.tar.gz"
     fullname="${SAVEFULL}/${shortname}"
+    F_REP="${FILE//-/:}"
+    evidence="${SAVEFULL}/${F_REP}/.full_download"
 
-    echo "Downloading ${shortname}"
-    wget -P "$SAVEFULL" "$DOWNLOAD/$SAVESUB/$shortname"
-    tar -xvf "$fullname" -C "$SAVEFULL" --force-local
-    mv "$DATAFOLDER/$SAVESUB/$SUBDIR/$FILE" "$DATAFOLDER/$SAVESUB/$FILE"  # this is a result of a saving error previously
-    rm -r "$DATAFOLDER/$SAVESUB/$SUBDIR"
+    # -- check for evidence of full download
+    if [ -f "$evidence" ]; then
+        echo -e "$shortname exists and already unzipped\n"
+    # -- check for existing tar.gz file
+    elif [ -f "$DOWNLOAD/$SAVESUB/$shortname" ]; then
+        echo -e "$shortname exists...unzipping\n"
+        tar -xvf "$fullname" -C "$SAVEFULL" --force-local
+        mv "$DATAFOLDER/$SAVESUB/$SUBDIR/$FILE" "$DATAFOLDER/$SAVESUB/$FILE"  # this is a result of a saving error previously
+        rm -r "$DATAFOLDER/$SAVESUB/$SUBDIR"
+        rm "$DATAFOLDER/$SAVESUB/${FILE}.tar.gz"
+    # -- otherwise, download again
+    else
+        echo "Downloading ${shortname}"
+        wget -P "$SAVEFULL" "$DOWNLOAD/$SAVESUB/$shortname"
+        tar -xvf "$fullname" -C "$SAVEFULL" --force-local
+        mv "$DATAFOLDER/$SAVESUB/$SUBDIR/$F_REP" "$DATAFOLDER/$SAVESUB/$F_REP"  # this is a result of a saving error previously
+        rm -r "$DATAFOLDER/$SAVESUB/$SUBDIR"
+        rm "$DATAFOLDER/$SAVESUB/${FILE}.tar.gz"
+    fi
+    
+    # -- add evidence of successful download
+    touch "$evidence"
+
+    # -- check downloads
     COUNT=$((COUNT+1))
     echo "Downloaded $COUNT / $MAXFILES files!"
     if [[ $COUNT -ge $MAXFILES ]]; then

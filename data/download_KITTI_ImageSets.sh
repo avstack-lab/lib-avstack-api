@@ -18,6 +18,11 @@ val.txt)
 mkdir -p "$DATAFOLDER/ImageSets"
 
 for FILE in ${files[@]}; do
-	echo "Downloading: $FILE"
-        wget -P "$DATAFOLDER/ImageSets" "$DOWNLOAD/$FILE"
+        fullpath="${DATAFOLDER}/ImageSets/${FILE}"
+        if [ -f "$fullpath" ]; then
+                echo -e "$FILE already downloaded.\n"
+        else
+                echo "Downloading: $FILE"
+                wget -P "$DATAFOLDER/ImageSets" "$DOWNLOAD/$FILE"
+        fi
 done
