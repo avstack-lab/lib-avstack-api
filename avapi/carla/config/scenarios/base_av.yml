@@ -34,3 +34,17 @@ ego:
     - imu 0:
         name: 'imu'
         save: false
+    - lidar 0:
+        name: 'lidar'
+        save: false
+        attributes:
+          sensor_tick: 0.10
+          channels: 32
+          rotation_frequency: 20  # needs to be the same as sim rate
+          range: 100.0
+        noise: {}
+        transform:
+          location:
+            x: -0.5
+            y: 0
+            z: 1.8
