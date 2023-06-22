@@ -15,14 +15,18 @@ import numpy as np
 from avstack import calibration, sensors
 from avstack.environment.objects import Occlusion, VehicleState
 from avstack.geometry import (
-    NominalOriginStandard,
-    Origin,
+    Rotation,
+    Vector,
+    ReferenceFrame,
+    GlobalOrigin3D,
     bbox,
-    get_origin_from_line,
+    PointMatrix3D,
+    q_mult_vec,
+    q_stan_to_cam,
     q_cam_to_stan,
-    VectorDirMag
+    transformations as tforms,
+    get_reference_from_line
 )
-from avstack.geometry import transformations as tforms
 from avstack.modules.tracking.tracks import get_track_from_line
 from cv2 import imread
 
@@ -172,6 +176,7 @@ class BaseSceneDataset:
         data = self._load_lidar(
             frame, sensor, filter_front=filter_front, with_panoptic=with_panoptic
         )
+        data = PointMatrix3D(data, calib)
         pc = sensors.LidarData(ts, frame, data, calib, self.get_sensor_ID(sensor))
         if (min_range is not None) or (max_range is not None):
             pc.filter_by_range(min_range, max_range, inplace=True)
@@ -209,11 +214,11 @@ class BaseSceneDataset:
             )
         if max_dist is not None:
             if sensor == "ego":
-                calib = calibration.Calibration(NominalOriginStandard)
+                calib = calibration.Calibration(NominalreferenceStandard)
             else:
                 calib = self.get_calibration(frame, sensor)
             objs = np.array(
-                [obj for obj in objs if obj.position.distance(calib.origin) < max_dist]
+                [obj for obj in objs if obj.position.distance(calib.reference) < max_dist]
             )
         return objs
 
@@ -261,7 +266,7 @@ class BaseSceneDataset:
         whitelist_types=None,
         ignore_types=None,
         max_dist=None,
-        dist_ref=NominalOriginStandard,
+        dist_ref=GlobalOrigin3D,
     ):
         # -- prep whitelist types
         if whitelist_types is None:
@@ -292,7 +297,7 @@ class BaseSceneDataset:
                 continue
             # -- distance filter
             if max_dist is not None:
-                obj.change_origin(dist_ref)
+                obj.change_reference(dist_ref, inplace=True)
                 if obj.position.norm() > max_dist:
                     continue
             # -- save if made to here
@@ -359,7 +364,7 @@ class BaseSceneDataset:
             ang = None
             where_is_t = data[idx]
             idx += 1
-            object_origin = get_origin_from_line(" ".join(data[idx:]))
+            object_reference = get_reference_from_line(" ".join(data[idx:]))
         elif data[0] == "kitti-v2":  # converted kitti raw data -- longitudinal dataset
             idx = 1
             ts = data[idx]
@@ -381,12 +386,12 @@ class BaseSceneDataset:
             idx += 1
             score = float(data[idx])
             idx += 1
-            object_origin = get_origin_from_line(" ".join(data[idx:]))
+            object_reference = get_reference_from_line(" ".join(data[idx:]))
             pos = t_box
             vel = acc = ang = None
             where_is_t = "bottom"
             q_V_to_obj = tforms.transform_orientation([0, 0, yaw], "euler", "quat")
-            q_O_to_V = object_origin.q.conjugate()
+            q_O_to_V = object_reference.q.conjugate()
             q_O_to_obj = q_V_to_obj * q_O_to_V
 
         elif data[0] == "kitti":  # assume kitti with no prefix -- this is for kitti static dataset
@@ -401,11 +406,12 @@ class BaseSceneDataset:
             pos = t_box
             vel = acc = ang = None
             yaw = -float(data[14]) - np.pi / 2
-            object_origin = self.get_calibration(self.frames[0], "image-2").origin
+            object_reference = self.get_calibration(self.frames[0], "image-2").reference
             q_Ccam_to_Cstan = q_cam_to_stan
             q_Cstan_to_obj = tforms.transform_orientation([0, 0, yaw], "euler", "quat")
             q_O_to_obj = q_Cstan_to_obj * q_Ccam_to_Cstan
 
+<<<<<<< HEAD
         else:
             raise NotImplementedError(data)
 
@@ -421,21 +427,30 @@ class BaseSceneDataset:
         acc = [float(a) for a in acc] if acc is not None else None
         att = box3d.q
         ang = [float(a) for a in ang] if ang is not None else None
+=======
+        pos = Vector([float(p) for p in pos], object_reference)
+        vel = Vector([float(v) for v in vel], object_reference) if vel is not None else None
+        acc = Vector([float(a) for a in acc], object_reference) if acc is not None else None
+        rot = Rotation(q_O_to_obj, object_reference)
+        ang = Vector([float(a) for a in ang], object_reference) if ang is not None else None
+        hwl = [float(b) for b in box_size]
+        box3d = bbox.Box3D(pos, rot, hwl, where_is_t=where_is_t)
+
+>>>>>>> 6abe2d2 (WIP get kitti example notebook running through)
         try:
             ID = int(ID)
         except ValueError as e:
             pass
         obj = VehicleState(obj_type, ID)
         obj.set(
-            float(ts),
-            pos,
-            box3d,
-            vel,
-            acc,
-            att,
-            ang,
+            t=float(ts),
+            position=pos,
+            box=box3d,
+            velocity=vel,
+            acceleration=acc,
+            attitude=rot,
+            angular_velocity=ang,
             occlusion=occ,
-            origin=object_origin,
         )
         return obj
 
@@ -590,13 +605,13 @@ class _nuBaseDataset(BaseSceneDataset):
         calib_data = self._get_calib_data(frame, sensor)
         x_O_2_S_in_O = np.array(calib_data["translation"])
         q_O_to_S = np.quaternion(*calib_data["rotation"]).conjugate()
-        origin = Origin(x_O_2_S_in_O, q_O_to_S)
+        reference = ReferenceFrame(x_O_2_S_in_O, q_O_to_S, reference=GlobalOrigin3D)
         sensor = sensor if sensor is not None else self.sensor_name(frame)
         if "CAM" in sensor:
             P = np.hstack((np.array(calib_data["camera_intrinsic"]), np.zeros((3, 1))))
-            calib = calibration.CameraCalibration(origin, P, self.img_shape, channel_order="bgr")
+            calib = calibration.CameraCalibration(reference, P, self.img_shape, channel_order="bgr")
         else:
-            calib = calibration.Calibration(origin)
+            calib = calibration.Calibration(reference)
         return calib
 
     def _load_timestamp(self, frame, sensor):
@@ -632,7 +647,7 @@ class _nuBaseDataset(BaseSceneDataset):
         """
         sensor_data = self._get_sensor_record(frame, sensor)
         ego = self.get_ego(frame)
-        origin = self.get_calibration(frame, sensor).origin
+        reference = self.get_calibration(frame, sensor).reference
         try:
             boxes, velocities = self._get_anns_metadata(sensor_data["token"])
         except KeyError:
@@ -646,15 +661,15 @@ class _nuBaseDataset(BaseSceneDataset):
                 or ("all" in whitelist_types)
             ):
                 ts = sensor_data["timestamp"]
-                line = self._box_to_line(ts, box["box"], origin)
+                line = self._box_to_line(ts, box["box"], reference)
                 obj = self.parse_label_line(line)
-                velocity = VectorDirMag(vel, origin=ego.origin)
-                velocity.change_origin(obj.origin)
+                velocity = Vector(vel, reference=ego.reference)
+                velocity.change_reference(obj.reference, inplace=True)
                 obj.velocity = velocity
                 objects.append(obj)
         return np.array(objects)
 
-    def _box_to_line(self, ts, box, origin):
+    def _box_to_line(self, ts, box, reference):
         ID = box.token
         obj_type = general_to_detection_class[box.name]
         vel = [None] * 3
@@ -666,7 +681,7 @@ class _nuBaseDataset(BaseSceneDataset):
         line = (
             f"nuscenes object_3d {ts} {ID} {obj_type} {int(occ)} {pos[0]} "
             f"{pos[1]} {pos[2]} {vel[0]} {vel[1]} {vel[2]} {acc[0]} "
-            f'{acc[1]} {acc[2]} {h} {w} {l} {q[0]} {q[1]} {q[2]} {q[3]} {"center"} {origin.format_as_string()}'
+            f'{acc[1]} {acc[2]} {h} {w} {l} {q[0]} {q[1]} {q[2]} {q[3]} {"center"} {reference.format_as_string()}'
         )
         return line
 
@@ -683,11 +698,11 @@ class _nuBaseDataset(BaseSceneDataset):
             vel = [None] * 3
         acc = [None] * 3
         w, l, h = [1.73, 4.084, 1.562]
-        origin = NominalOriginStandard
+        reference = GlobalOrigin3D
         occ = Occlusion.NONE
         line = (
             f"nuscenes object_3d {ts} {ID} {obj_type} {int(occ)} {pos[0]} "
             f"{pos[1]} {pos[2]} {vel[0]} {vel[1]} {vel[2]} {acc[0]} "
-            f'{acc[1]} {acc[2]} {h} {w} {l} {q.w} {q.x} {q.y} {q.z} {"center"} {origin.format_as_string()}'
+            f'{acc[1]} {acc[2]} {h} {w} {l} {q.w} {q.x} {q.y} {q.z} {"center"} {reference.format_as_string()}'
         )
         return line

@@ -10,7 +10,7 @@ import avstack
 from avstack import maskfilters
 from avstack.datastructs import DataContainer
 from avstack.environment.objects import VehicleState
-from avstack.geometry import Box2D, Box3D, NominalOriginStandard, bbox
+from avstack.geometry import Box2D, Box3D, bbox
 from avstack.geometry.transformations import project_to_image
 from avstack.modules.perception.detections import BoxDetection, MaskDetection
 from .base import draw_projected_box3d, get_lidar_color
@@ -153,9 +153,7 @@ def show_image_with_boxes(
                     mask = box.mask
                 box = box.box
             if maskfilters.box_in_fov(box, img.calibration):
-                corners_3d_in_image = box.project_corners_to_2d_image_plane(
-                    img.calibration, squeeze=True
-                )
+                corners_3d_in_image = box.project_corners_to_2d_image_plane(img.calibration)
                 img1 = draw_projected_box3d(img1, corners_3d_in_image, color=col)
         elif isinstance(box, (avstack.modules.tracking.tracks.XyzFromRazelTrack)):
             pts_box = np.array([[-box.x[1], -box.x[2], box.x[0]]])
@@ -239,7 +237,7 @@ def show_lidar_bev_with_boxes(
 
         # Filter labels outside extent
         for box in boxes:
-            box.change_origin(point_cloud.calibration.origin)
+            box.change_reference(point_cloud.calibration.reference, inplace=True)
         box_filter = maskfilters.filter_boxes_extent(boxes, extent)
         boxes = boxes[box_filter]
         if type(box_colors) in [list, np.ndarray]:
@@ -278,7 +276,7 @@ def show_lidar_bev_with_boxes(
             raise NotImplementedError(type(box))
 
         # Corners in bev --  ***assumes for now pc z axis is up
-        box.change_origin(point_cloud.calibration.origin)
+        box.change_reference(point_cloud.calibration.reference, inplace=True)
         boxes_show.append(box)
         bev_corners = box.corners[:, :2]
         boxes_show_corners.append(bev_corners)

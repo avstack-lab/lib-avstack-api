@@ -10,7 +10,15 @@ import numpy as np
 import open3d as o3d
 from avstack import calibration
 from avstack.environment.objects import Occlusion, VehicleState
-from avstack.geometry import Origin, q_mult_vec, transform_orientation, NominalOriginStandard, bbox, q_stan_to_cam
+from avstack.geometry import (
+    Rotation,
+    Vector,
+    ReferenceFrame,
+    bbox,
+    q_mult_vec,
+    q_stan_to_cam,
+    transformations as tforms
+)
 from cv2 import imread, imwrite
 
 from .._dataset import BaseSceneDataset, BaseSceneManager

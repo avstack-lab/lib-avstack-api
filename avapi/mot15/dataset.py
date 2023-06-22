@@ -9,13 +9,15 @@ import numpy as np
 from avstack import calibration
 from avstack.environment.objects import VehicleState
 from avstack.geometry import (
-    NominalOriginStandard,
-    Origin,
+    GlobalOrigin3D,
+    Rotation,
+    Vector,
+    ReferenceFrame,
     bbox,
     q_mult_vec,
     q_stan_to_cam,
+    transformations as tforms
 )
-from avstack.geometry import transformations as tforms
 from avstack.utils import check_xor_for_none
 from cv2 import imread
 from tqdm import tqdm
@@ -79,7 +81,7 @@ class Mot15SceneDataset(BaseSceneDataset):
         self.frames = [int(img.replace(self.split_path, '').strip("/").split(".")[0]) for img in self.images]
         self._frame_to_idx_map = {frame:i for i, frame in enumerate(self.frames)}
         # calibration will always be fixed for each scene
-        origin = NominalOriginStandard
+        origin = GlobalOrigin3D
         img_shape = (self.seqinfo.getint("Sequence", "imHeight"),
                      self.seqinfo.getint("Sequence", "imWidth"),
                      3)
@@ -108,5 +110,4 @@ class Mot15SceneDataset(BaseSceneDataset):
         return img
 
     def _load_objects(self, frame, **kwargs):
-        objects = []
-        return objects
+        raise NotImplementedError("Have not allowed for loading objects yet")

@@ -14,7 +14,7 @@ except ModuleNotFoundError as e:
     print("Cannot find ipywidgets...cannot run visualizations")
 
 from avstack.environment.objects import VehicleState
-from avstack.geometry import NominalOriginStandard, StandardCoordinates, bbox
+from avstack.geometry import StandardCoordinates, bbox
 from avstack.modules.perception.detections import BoxDetection
 from avapi.evaluation import color_from_object_type
 from .snapshot import show_image_with_boxes

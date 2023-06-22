@@ -7,7 +7,6 @@
 import os
 
 import numpy as np
-from avstack.geometry import NominalTransform as nom_trans
 from avstack.geometry import bbox
 from avstack.modules.perception.detections import BoxDetection, get_detections_from_file
 

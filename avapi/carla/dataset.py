@@ -12,7 +12,7 @@ import os
 
 import numpy as np
 from avstack import calibration
-from avstack.geometry import Origin, q_mult_vec
+from avstack.geometry import ReferenceFrame, Vector, Rotation, q_mult_vec
 from cv2 import imread, imwrite
 
 from .._dataset import BaseSceneDataset, BaseSceneManager
@@ -246,12 +246,13 @@ class CarlaSceneDataset(BaseSceneDataset):
             x_ego_2_OR1_in_ego = q_mult_vec(q_OR1_2_ego, x_ego_2_OR1_in_OR1)
             x_ego_2_sens_in_ego = x_OR1_2_sens_in_ego + x_ego_2_OR1_in_ego
             """
+            raise NotImplementedError("Have not updated this for refchoc yet")
             # -- get items
             ego = self.get_ego(frame)
             x_OR1_2_ego_in_OR1 = ego.position.vector
             q_OR1_2_ego = ego.attitude.q
-            x_OR1_2_sens_in_OR1 = calib.origin.x
-            q_OR1_2_sens = calib.origin.q
+            x_OR1_2_sens_in_OR1 = calib.reference.x
+            q_OR1_2_sens = calib.reference.q
 
             # -- rotation
             q_ego_2_OR1 = q_OR1_2_ego.conjugate()
@@ -263,7 +264,8 @@ class CarlaSceneDataset(BaseSceneDataset):
             x_ego_2_sens_in_ego = x_OR1_2_sens_in_ego + x_ego_2_OR1_in_ego
 
             # -- new origin
-            calib.origin = Origin(x_ego_2_sens_in_ego, q_ego_2_sens)
+            pos = Vector(x_ego_2_sens_in_ego)
+            calib.origin = ReferenceFrame(x_ego_2_sens_in_ego, q_ego_2_sens)
         return calib
 
     def _load_image(self, frame, sensor):

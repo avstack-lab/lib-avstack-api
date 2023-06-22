@@ -17,13 +17,15 @@ import numpy as np
 from avstack import calibration
 from avstack.environment.objects import VehicleState
 from avstack.geometry import (
-    NominalOriginStandard,
-    Origin,
+    Rotation,
+    Vector,
+    ReferenceFrame,
+    GlobalOrigin3D,
     bbox,
     q_mult_vec,
     q_stan_to_cam,
+    transformations as tforms
 )
-from avstack.geometry import transformations as tforms
 from avstack.utils import check_xor_for_none
 from cv2 import imread
 from tqdm import tqdm
@@ -160,17 +162,16 @@ class KittiObjectDataset(BaseSceneDataset):
 
     def _load_ego(self, frame):
         """Ego origin is defined as the center of the vehicle"""
+        reference = self._load_ego_reference(frame)
         ego = VehicleState("car")
         h, w, l = self.ego_size
-        box = bbox.Box3D(
-            [h, w, l, np.zeros((3,)), np.quaternion(1)], NominalOriginStandard,
-            where_is_t='bottom'
-        )
-        pos = np.zeros((3,))
+        pos = Vector(np.zeros((3,)), reference)
+        rot = Rotation(np.quaternion(1), reference)
+        box = bbox.Box3D(pos, rot, [h,w,l], where_is_t='bottom')
         ego.set(self.get_timestamp(frame),
                 pos,
                 box,
-                attitude=np.quaternion(1),)
+                attitude=rot)
         return ego
 
     @classmethod
@@ -209,14 +210,18 @@ class KittiObjectDataset(BaseSceneDataset):
                     txt_file.write(" {}".format(val))
                 txt_file.write("\n")
 
+    def _load_ego_reference(self, frame):
+        return GlobalOrigin3D  # TODO: this is not ideal...
+
     def _load_calibration(self, frame, sensor):
         calib_fname = os.path.join(
             self.split_path, self.folder_names["calibration"], "%06d.txt" % frame
         )
-        return self._load_calibration_from_file(calib_fname, sensor, self.img_shape)
+        ego_reference = self._load_ego_reference(frame)
+        return self._load_calibration_from_file(calib_fname, sensor, self.img_shape, ego_reference)
 
     @staticmethod
-    def _load_calibration_from_file(file, sensor, img_shape, ego_height=1.49):
+    def _load_calibration_from_file(file, sensor, img_shape, ego_reference, ego_height=1.49):
         if sensor == "labels":
             sensor = "image-2"
         calib_data = KittiObjectDataset.read_dict_text_file(file)
@@ -241,11 +246,11 @@ class KittiObjectDataset(BaseSceneDataset):
             x_O_2_C_in_O = [vx, vy, vz]
             q_O_2_ref = q_stan_to_cam
             q_O_2_C = q_ref_2_C0 * q_O_2_ref
-            origin = Origin(x_O_2_C_in_O, q_O_2_C)
+            reference = ReferenceFrame(x_O_2_C_in_O, q_O_2_C, ego_reference)
             P = np.reshape(
                 calib_data["P%s" % sensor.lower().replace("image-", "")], [3, 4]
             )
-            calib = calibration.CameraCalibration(origin, P, img_shape, channel_order='bgr')
+            calib = calibration.CameraCalibration(reference, P, img_shape, channel_order='bgr')
         elif "lidar" in sensor.lower():
             # -- get transform from cam 0 to lidar
             R_velo_to_cam0 = np.reshape(calib_data["Tr_velo_to_cam"], [3, 4])[:3, :3]
@@ -258,7 +263,7 @@ class KittiObjectDataset(BaseSceneDataset):
             # -- combine
             x_O_2_L_in_O = [-0.27, 0, 1.73 - ego_height / 2]
             q_O_2_L = q_C0_2_L * q_O_2_C0
-            calib = calibration.Calibration(Origin(x_O_2_L_in_O, q_O_2_L))
+            calib = calibration.Calibration(ReferenceFrame(x_O_2_L_in_O, q_O_2_L, ego_reference))
         else:
             raise NotImplementedError(sensor)
         return calib
@@ -304,7 +309,7 @@ class KittiObjectDataset(BaseSceneDataset):
             label_fname, whitelist_types, ignore_types
         )
         for obj in objects:
-            obj.change_origin(object_calib.origin)
+            obj.change_reference(object_calib.reference, inplace=True)
         return objects
 
     def _load_timestamp(self, frame, sensor="lidar"):
@@ -472,7 +477,10 @@ class KittiRawDataset:
             ids_options = self.get_sequence_ids_at_date(
                 date, tracklets_req=tracklets_req
             )
-            id_seq = ids_options[idx_seq]
+            try:
+                id_seq = ids_options[idx_seq]
+            except IndexError as e:
+                raise IndexError("list index out of range...have you downloaded the tracklets to go with scenes?")
         seq_folder = os.path.join(self.data_dir, date, id_seq)
         assert os.path.exists(seq_folder), f"{seq_folder} does not exist"
         exp_path = os.path.join(
@@ -619,34 +627,33 @@ class KittiRawDataset:
                 q_L_2_obj = tforms.transform_orientation([0, 0, yaw], "euler", "quat")
 
                 # convert to camera 2 frame
-                obj_origin = calib_image.origin
+                obj_reference = calib_image.reference
                 # -- quaternion
-                q_O_2_L = calib_lidar.origin.q
-                q_C2_2_O = calib_image.origin.q.conjugate()
+                q_O_2_L = calib_lidar.reference.q
+                q_C2_2_O = calib_image.reference.q.conjugate()
                 q_C2_2_L = q_O_2_L * q_C2_2_O
                 q_C2_2_obj = q_L_2_obj * q_C2_2_L
 
                 # -- translation
                 q_L_2_C2 = q_C2_2_L.conjugate()
                 x_L_2_obj_in_C2 = q_mult_vec(q_L_2_C2, x_L_2_obj_in_L)
-                x_C2_2_O_in_O = -calib_image.origin.x
-                x_O_2_L_in_O = calib_lidar.origin.x
+                x_C2_2_O_in_O = -calib_image.reference.x
+                x_O_2_L_in_O = calib_lidar.reference.x
                 x_C2_2_L_in_O = x_O_2_L_in_O + x_C2_2_O_in_O
                 x_C2_2_L_in_C2 = q_mult_vec(q_C2_2_O.conjugate(), x_C2_2_L_in_O)
                 x_C2_2_obj_in_C2 = x_L_2_obj_in_C2 + x_C2_2_L_in_C2
 
                 # Store fields
-                box3d = bbox.Box3D(
-                    [h, w, l, x_C2_2_obj_in_C2, q_C2_2_obj], origin=obj_origin
-                )
+                pos = Vector(x_C2_2_obj_in_C2, obj_reference)
+                rot = Rotation(q_C2_2_obj, obj_reference)
+                hwl = [h, w, l]
+                box3d = bbox.Box3D(pos, rot, hwl)
                 obj = VehicleState(trk.objectType, itrk)
                 ts = timestamps["velodyne"][iframe].timestamp()
-                pos = box3d.t
                 vel = None
                 acc = None
-                att = box3d.q
                 ang = None
-                obj.set(ts, pos, box3d, vel, acc, att, ang, origin=obj_origin)
+                obj.set(ts, pos, box3d, vel, acc, rot, ang)
                 objects[iframe].append(obj)
         frame_list = []
         for idx, objs in objects.items():
