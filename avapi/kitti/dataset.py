@@ -17,6 +17,8 @@ import numpy as np
 from avstack import calibration
 from avstack.environment.objects import VehicleState
 from avstack.geometry import (
+    Position,
+    Attitude,
     Rotation,
     Vector,
     ReferenceFrame,
@@ -165,8 +167,8 @@ class KittiObjectDataset(BaseSceneDataset):
         reference = self._load_ego_reference(frame)
         ego = VehicleState("car")
         h, w, l = self.ego_size
-        pos = Vector(np.zeros((3,)), reference)
-        rot = Rotation(np.quaternion(1), reference)
+        pos = Position(np.zeros((3,)), reference)
+        rot = Attitude(np.quaternion(1), reference)
         box = bbox.Box3D(pos, rot, [h,w,l], where_is_t='bottom')
         ego.set(self.get_timestamp(frame),
                 pos,
@@ -213,11 +215,10 @@ class KittiObjectDataset(BaseSceneDataset):
     def _load_ego_reference(self, frame):
         return GlobalOrigin3D  # TODO: this is not ideal...
 
-    def _load_calibration(self, frame, sensor):
+    def _load_calibration(self, frame, sensor, ego_reference):
         calib_fname = os.path.join(
             self.split_path, self.folder_names["calibration"], "%06d.txt" % frame
         )
-        ego_reference = self._load_ego_reference(frame)
         return self._load_calibration_from_file(calib_fname, sensor, self.img_shape, ego_reference)
 
     @staticmethod
@@ -231,19 +232,19 @@ class KittiObjectDataset(BaseSceneDataset):
             R_ref_2_C0 = np.reshape(calib_data["R0_rect"], [3, 3])  # transpose or no?
         q_ref_2_C0 = tforms.transform_orientation(R_ref_2_C0, "dcm", "quat")
         if "image" in sensor.lower():
-            vx = 0  # approximately centered forward-back
-            vz = 1.65 - ego_height / 2  # relative tocar
+            px = 0  # approximately centered forward-back
+            pz = 1.65 - ego_height / 2  # relative to car
             if sensor.lower() == "image-0":
-                vy = 0  # approximately centered left-right
+                py = 0  # approximately centered left-right
             elif sensor.lower() == "image-1":
-                vy = -0.54
+                py = -0.54
             elif sensor.lower() == "image-2":
-                vy = 0.06
+                py = 0.06
             elif sensor.lower() == "image-3":
-                vy = -0.48
+                py = -0.48
             else:
                 raise NotImplementedError(sensor.lower())
-            x_O_2_C_in_O = [vx, vy, vz]
+            x_O_2_C_in_O = np.array([px, py, pz])
             q_O_2_ref = q_stan_to_cam
             q_O_2_C = q_ref_2_C0 * q_O_2_ref
             reference = ReferenceFrame(x_O_2_C_in_O, q_O_2_C, ego_reference)
@@ -261,7 +262,7 @@ class KittiObjectDataset(BaseSceneDataset):
             q_O_2_ref = q_stan_to_cam
             q_O_2_C0 = q_ref_2_C0 * q_O_2_ref
             # -- combine
-            x_O_2_L_in_O = [-0.27, 0, 1.73 - ego_height / 2]
+            x_O_2_L_in_O = np.array([-0.27, 0, 1.73 - ego_height / 2])
             q_O_2_L = q_C0_2_L * q_O_2_C0
             calib = calibration.Calibration(ReferenceFrame(x_O_2_L_in_O, q_O_2_L, ego_reference))
         else:
@@ -644,8 +645,8 @@ class KittiRawDataset:
                 x_C2_2_obj_in_C2 = x_L_2_obj_in_C2 + x_C2_2_L_in_C2
 
                 # Store fields
-                pos = Vector(x_C2_2_obj_in_C2, obj_reference)
-                rot = Rotation(q_C2_2_obj, obj_reference)
+                pos = Position(x_C2_2_obj_in_C2, obj_reference)
+                rot = Attitude(q_C2_2_obj, obj_reference)
                 hwl = [h, w, l]
                 box3d = bbox.Box3D(pos, rot, hwl)
                 obj = VehicleState(trk.objectType, itrk)

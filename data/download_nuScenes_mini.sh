@@ -6,9 +6,9 @@ DATAFOLDER=${1:-/data/$(whoami)}
 DATAFOLDER=${DATAFOLDER%/}
 DATAFOLDER="${DATAFOLDER}/nuScenes"
 
-evidence="${DATAFOLDER}/.v1.0-mini.txt"
+evidence="${DATAFOLDER}/v1.0-mini"
 
-if [ -f "$evidence" ]; then
+if [ -d "$evidence" ]; then
         echo -e "\nAlready downloaded nuScenes mini\n"
 else
     mkdir -p "$DATAFOLDER"

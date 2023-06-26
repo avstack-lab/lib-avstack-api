@@ -15,15 +15,17 @@ import numpy as np
 from avstack import calibration, sensors
 from avstack.environment.objects import Occlusion, VehicleState
 from avstack.geometry import (
-    Rotation,
-    Vector,
+    Position,
+    Velocity,
+    Acceleration,
+    Attitude,
+    AngularVelocity,
     ReferenceFrame,
     GlobalOrigin3D,
-    bbox,
+    Box3D,
     PointMatrix3D,
-    q_mult_vec,
-    q_stan_to_cam,
     q_cam_to_stan,
+    q_mult_vec,
     transformations as tforms,
     get_reference_from_line
 )
@@ -131,7 +133,8 @@ class BaseSceneDataset:
 
     def get_calibration(self, frame, sensor):
         sensor = self.get_sensor_name(sensor)
-        return self._load_calibration(frame, sensor=sensor)
+        ego_reference = self.get_ego_reference(frame)
+        return self._load_calibration(frame, sensor=sensor, ego_reference=ego_reference)
 
     def get_ego(self, frame):
         return self._load_ego(frame)
@@ -158,6 +161,9 @@ class BaseSceneDataset:
         return sensors.DepthImageData(
             ts, frame, data, calib, self.get_sensor_ID(cam_string)
         )
+    
+    def get_ego_reference(self, frame):
+        return self._load_ego_reference(frame)
 
     def get_lidar(
         self,
@@ -201,6 +207,7 @@ class BaseSceneDataset:
         return rad
     
     def get_objects(self, frame, sensor="main_camera", max_dist=None, max_occ=None, **kwargs):
+        reference = self.get_ego_reference(frame)
         sensor = self.get_sensor_name(sensor)
         objs = self._load_objects(frame, sensor=sensor, **kwargs)
         if max_occ is not None:
@@ -214,7 +221,7 @@ class BaseSceneDataset:
             )
         if max_dist is not None:
             if sensor == "ego":
-                calib = calibration.Calibration(NominalreferenceStandard)
+                calib = calibration.Calibration(reference)
             else:
                 calib = self.get_calibration(frame, sensor)
             objs = np.array(
@@ -228,9 +235,9 @@ class BaseSceneDataset:
     def get_objects_from_file(self, fname, whitelist_types, max_dist=None):
         return self._load_objects_from_file(fname, whitelist_types, max_dist=max_dist)
 
-    def get_timestamp(self, frame, sensor="lidar"):
+    def get_timestamp(self, frame, sensor="lidar", utime=False):
         sensor = self.get_sensor_name(sensor)
-        return self._load_timestamp(frame, sensor=sensor)
+        return self._load_timestamp(frame, sensor=sensor, utime=utime)
 
     def save_calibration(self, frame, calib, folder, **kwargs):
         if not os.path.exists(folder):
@@ -245,7 +252,7 @@ class BaseSceneDataset:
     def _load_frames(self, sensor):
         raise NotImplementedError
 
-    def _load_calibration(self, frame, sensor):
+    def _load_calibration(self, frame, sensor, reference):
         raise NotImplementedError
 
     def _load_image(self, frame, camera):
@@ -411,32 +418,14 @@ class BaseSceneDataset:
             q_Cstan_to_obj = tforms.transform_orientation([0, 0, yaw], "euler", "quat")
             q_O_to_obj = q_Cstan_to_obj * q_Ccam_to_Cstan
 
-<<<<<<< HEAD
-        else:
-            raise NotImplementedError(data)
-
-        # Put into objects
-        t_box = np.array([float(t) for t in t_box])
-        box3d = bbox.Box3D(
-            [*[float(b) for b in box_size], t_box, q_O_to_obj],
-            object_origin,
-            where_is_t=where_is_t,
-        )
-        pos = [float(p) for p in pos]
-        vel = [float(v) for v in vel] if vel is not None else None
-        acc = [float(a) for a in acc] if acc is not None else None
-        att = box3d.q
-        ang = [float(a) for a in ang] if ang is not None else None
-=======
-        pos = Vector([float(p) for p in pos], object_reference)
-        vel = Vector([float(v) for v in vel], object_reference) if vel is not None else None
-        acc = Vector([float(a) for a in acc], object_reference) if acc is not None else None
-        rot = Rotation(q_O_to_obj, object_reference)
-        ang = Vector([float(a) for a in ang], object_reference) if ang is not None else None
+        pos = Position(np.array([float(p) for p in pos]), object_reference)
+        vel = Velocity(np.array([float(v) for v in vel]), object_reference) if vel is not None else None
+        acc = Acceleration(np.array([float(a) for a in acc]), object_reference) if acc is not None else None
+        rot = Attitude(q_O_to_obj, object_reference)
+        ang = AngularVelocity(np.quaternion([float(a) for a in ang]), object_reference) if ang is not None else None
         hwl = [float(b) for b in box_size]
-        box3d = bbox.Box3D(pos, rot, hwl, where_is_t=where_is_t)
+        box3d = Box3D(pos, rot, hwl, obj_type=obj_type, where_is_t=where_is_t)
 
->>>>>>> 6abe2d2 (WIP get kitti example notebook running through)
         try:
             ID = int(ID)
         except ValueError as e:
@@ -490,6 +479,9 @@ _nominal_whitelist_types = [
 ]
 _nominal_ignore_types = []
 
+occlusion_mapping = {4:Occlusion.MOST, 3:Occlusion.PARTIAL,
+                     2:Occlusion.PARTIAL, 1:Occlusion.NONE}
+
 
 class _nuManager(BaseSceneManager):
     nominal_whitelist_types = _nominal_whitelist_types
@@ -520,10 +512,18 @@ class _nuBaseDataset(BaseSceneDataset):
         super().__init__(whitelist_types, ignore_types)
         self.nuX = nuX
         self.nuX_can = nuX_can
+        if nuX_can is not None:
+            self.vehicle_pose = self.nuX_can.get_messages(self.scene['name'], 'pose')
+            self.vehicle_pose_utime = np.array([vp["utime"] for vp in self.vehicle_pose])
+        else:
+            self.vehicle_pose = None
         self.data_dir = data_dir
         self.split = split
         self.split_path = os.path.join(data_dir, split)
         self.make_sample_records()
+        self.w, self.l, self.h = [1.73, 4.084, 1.562]
+        self.hwl = [self.h, self.w, self.l]
+        self.token_ID_map = {}
 
     @property
     def frames(self):
@@ -534,27 +534,6 @@ class _nuBaseDataset(BaseSceneDataset):
 
     def _get_sample_metadata(self, sample_token):
         return self.nuX.get("sample", sample_token)
-
-    def _get_anns_metadata(self, sample_data_token):
-        try:
-            _, boxes, camera_intrinsic = self.nuX.get_sample_data(sample_data_token)
-            boxes = [{"name": box.name, "box": box} for box in boxes]
-        except AttributeError:
-            object_tokens, surface_tokens = self.nuX.list_anns(
-                sample_data_token, verbose=False
-            )
-            obj_anns = [
-                self.nuX.get("object_ann", obj_tok) for obj_tok in object_tokens
-            ]
-            boxes = [
-                {
-                    "name": self.nuX.get("category", obj_ann["category_token"])["name"],
-                    "box": obj_ann["bbox"],
-                }
-                for obj_ann in obj_anns
-            ]
-        velocities = [self.nuX.box_velocity(box["box"].token) for box in boxes]
-        return boxes, velocities
 
     def _get_sensor_record(self, frame, sensor=None):
         try:
@@ -593,19 +572,23 @@ class _nuBaseDataset(BaseSceneDataset):
     def _load_frames(self, sensor: str = None):
         return self.frames
 
-    def _load_calibration(self, frame, sensor=None):
+    def _load_calibration(self, frame, ego_reference, sensor=None):
         """
+        W := global "world" frame
+        E := ego frame
+        S := sensor frame
+
         Reference frame has standard coordinates:
             x: forward
             y: left
             z: up
 
-        reference frame is: "the center of the rear axle projected to the ground."
+        ego reference frame is: "the center of the rear axle projected to the ground."
         """
         calib_data = self._get_calib_data(frame, sensor)
-        x_O_2_S_in_O = np.array(calib_data["translation"])
-        q_O_to_S = np.quaternion(*calib_data["rotation"]).conjugate()
-        reference = ReferenceFrame(x_O_2_S_in_O, q_O_to_S, reference=GlobalOrigin3D)
+        x_E_2_S_in_E = np.array(calib_data["translation"])
+        q_E_to_S = np.quaternion(*calib_data["rotation"]).conjugate()
+        reference = ReferenceFrame(x=x_E_2_S_in_E, q=q_E_to_S, reference=ego_reference)
         sensor = sensor if sensor is not None else self.sensor_name(frame)
         if "CAM" in sensor:
             P = np.hstack((np.array(calib_data["camera_intrinsic"]), np.zeros((3, 1))))
@@ -614,20 +597,65 @@ class _nuBaseDataset(BaseSceneDataset):
             calib = calibration.Calibration(reference)
         return calib
 
-    def _load_timestamp(self, frame, sensor):
-        return self._get_sensor_record(frame, sensor)["timestamp"] / 1e6 - self.t0
+    def _load_timestamp(self, frame, sensor, utime=False):
+        ut = self._get_sensor_record(frame, sensor)["timestamp"]
+        if utime:
+            return ut
+        else:
+            return ut / 1e6 - self.t0
+        
 
     def _load_image(self, frame, sensor=None):
         img_fname = self._get_sensor_file_name(frame, sensor)
         return imread(img_fname)
+    
+    def _load_ego_reference(self, frame):
+        """Get the ego vehicle as a reference frame"""
+        return self._load_ego(frame).as_reference()
 
-    def _load_ego(self, frame, sensor="LIDAR_TOP"):
-        sd_record = self._get_sensor_record(frame, sensor)
-        ego_data = self.nuX.get("ego_pose", sd_record["ego_pose_token"])
-        # -- get ego velocity
-        ts = ego_data["timestamp"] / 1e6 - self.t0
-        line = self._ego_to_line(ts, ego_data)
-        return self.parse_label_line(line)
+    def _load_ego(self, frame):
+        ref = GlobalOrigin3D
+        if self.vehicle_pose is not None:
+            try:
+                frame_vp = np.argmin(abs(self.vehicle_pose_utime - self.get_timestamp(frame, utime=True)))
+                vp = self.vehicle_pose[frame_vp]
+                t = vp['utime']  / 1e6 - self.t0
+                x_G_to_E_in_G = Position(vp['pos'], ref)
+                q_G_to_E = Attitude(np.quaternion(*vp['orientation']).conjugate(), ref)
+                q_E_to_G = q_G_to_E.q.conjugate()
+                v_in_G = Velocity(q_mult_vec(q_E_to_G, np.array(vp['vel'])), ref)
+                acc_in_G = Acceleration(q_mult_vec(q_E_to_G,  np.array(vp['accel'])), ref)
+                ang_in_G = AngularVelocity(np.quaternion(*q_mult_vec(q_E_to_G,  np.array(vp['rotation_rate']))), ref)
+            except Exception as e:
+                raise e  # need to handle this
+        else:
+            raise NotImplementedError("Preferable to use can bus data")
+            sd_record = self._get_sensor_record(frame, "LIDAR_TOP")
+            x_G_to_E = self.nuX.get("ego_pose", sd_record["ego_pose_token"])
+            pos = np.array(ego["translation"])
+            rot = np.quaternion(*ego["rotation"]).conjugate()
+            v_in_E = np.zeros(())
+            # sd_record = self._get_sensor_record(frame, sensor)
+            # ego_data = self.nuX.get("ego_pose", sd_record["ego_pose_token"])
+            # # -- get ego velocity
+            # ts = ego_data["timestamp"] / 1e6 - self.t0
+            # line = self._ego_to_line(ts, ego_data)
+            # return self.parse_label_line(line)
+        box3d = Box3D(x_G_to_E_in_G, q_G_to_E, self.hwl)
+
+        # -- set up ego in global reference frame
+        veh = VehicleState(obj_type='car')
+        veh.set(
+            t=t,
+            position=x_G_to_E_in_G,
+            velocity=v_in_G,
+            box=box3d,
+            attitude=q_G_to_E,
+            acceleration=acc_in_G,
+            angular_velocity=ang_in_G,
+            occlusion=Occlusion.NONE,
+        )
+        return veh
 
     def _load_objects(
         self,
@@ -646,28 +674,88 @@ class _nuBaseDataset(BaseSceneDataset):
         NOTE: for now, velocity is in the sensor's coordinate frame (moving)
         """
         sensor_data = self._get_sensor_record(frame, sensor)
-        ego = self.get_ego(frame)
         reference = self.get_calibration(frame, sensor).reference
-        try:
-            boxes, velocities = self._get_anns_metadata(sensor_data["token"])
-        except KeyError:
-            boxes, velocities = self._get_anns_metadata(sensor_data["sample_token"])
+
+        # get data for nuscenes
         objects = []
-        for box, vel in zip(boxes, velocities):
-            obj_type = general_to_detection_class[box["name"]]
+        _, boxes, _ = self.nuX.get_sample_data(sensor_data["token"])
+        for box in boxes:
+            metadata = self.nuX.get("sample_annotation", box.token)
+            obj_type = general_to_detection_class[box.name]
             if (
                 (obj_type in whitelist_types)
                 or (whitelist_types == "all")
                 or ("all" in whitelist_types)
             ):
-                ts = sensor_data["timestamp"]
-                line = self._box_to_line(ts, box["box"], reference)
-                obj = self.parse_label_line(line)
-                velocity = Vector(vel, reference=ego.reference)
-                velocity.change_reference(obj.reference, inplace=True)
-                obj.velocity = velocity
+                obj_token = metadata['instance_token']  # consistent between frames of a scene
+                if obj_token not in self.token_ID_map:
+                    self.token_ID_map[obj_token] = len(self.token_ID_map)
+                obj_ID = self.token_ID_map[obj_token]
+                position = Position(box.center, reference)
+                velocity = Velocity(self.nuX.box_velocity(box.token), GlobalOrigin3D)
+                velocity.change_reference(reference, inplace=True)
+                acceleration = None
+                attitude = Attitude(np.quaternion(*box.orientation).conjugate(), reference)
+                angular_velocity = None
+                hwl = [box.wlh[2], box.wlh[0], box.wlh[1]]
+                box = Box3D(position, attitude, hwl, where_is_t="center")
+                occlusion = occlusion_mapping[int(metadata["visibility_token"])]
+                obj = VehicleState(obj_type=obj_type, ID=obj_ID)
+                obj.set(
+                    t=sensor_data["timestamp"] / 1e6 - self.t0,
+                    position=position,
+                    velocity=velocity,
+                    acceleration=acceleration,
+                    attitude=attitude,
+                    angular_velocity=angular_velocity,
+                    box=box,
+                    occlusion=occlusion,
+                )
+                obj.change_reference(reference, inplace=True)
                 objects.append(obj)
         return np.array(objects)
+
+    # def _get_anns_metadata(self, sample_data_token):
+    #     try:
+    #         _, boxes, camera_intrinsic = self.nuX.get_sample_data(sample_data_token)
+    #         boxes = [{"name": box.name, "box": box} for box in boxes]
+    #     except AttributeError:
+    #         object_tokens, surface_tokens = self.nuX.list_anns(
+    #             sample_data_token, verbose=False
+    #         )
+    #         obj_anns = [
+    #             self.nuX.get("object_ann", obj_tok) for obj_tok in object_tokens
+    #         ]
+    #         boxes = [
+    #             {
+    #                 "name": self.nuX.get("category", obj_ann["category_token"])["name"],
+    #                 "box": obj_ann["bbox"],
+    #             }
+    #             for obj_ann in obj_anns
+    #         ]
+    #     velocities = [self.nuX.box_velocity(box["box"].token) for box in boxes]
+    #     return boxes, velocities
+        # try:
+        #     boxes, velocities = self._get_anns_metadata)
+        # except KeyError:
+        #     boxes, velocities = self._get_anns_metadata(sensor_data["sample_token"])
+        # objects = []
+        # for box, vel in zip(boxes, velocities):
+        #     obj_type = general_to_detection_class[box["name"]]
+        #     if (
+        #         (obj_type in whitelist_types)
+        #         or (whitelist_types == "all")
+        #         or ("all" in whitelist_types)
+        #     ):
+        #         ts = sensor_data["timestamp"]
+        #         import pdb; pdb.set_trace()
+        #         line = self._box_to_line(ts, box["box"], reference)
+        #         obj = self.parse_label_line(line)
+        #         velocity = Velocity(vel, reference=ego.reference)
+        #         velocity.change_reference(reference, inplace=True)
+        #         obj.velocity = velocity
+        #         objects.append(obj)
+        # return np.array(objects)
 
     def _box_to_line(self, ts, box, reference):
         ID = box.token

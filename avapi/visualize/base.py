@@ -42,7 +42,7 @@ def draw_box2d(image, qs, color=(255, 255, 255), thickness=2):
     return image
 
 
-def draw_projected_box3d(image, qs, color=(255, 255, 255), thickness=2):
+def draw_projected_box3d(image, qs, color=(255, 255, 255), thickness=2, ID=None):
     """Draw 3d bounding box in image
     qs: (8,3) array of vertices for the 3d box in following order:
         1 -------- 0
@@ -97,4 +97,23 @@ def draw_projected_box3d(image, qs, color=(255, 255, 255), thickness=2):
             thickness,
             cv2.LINE_AA,
         )
+
+    # name on top of box
+    if ID is not None:
+        font                   = cv2.FONT_HERSHEY_SIMPLEX
+        edge                   = 15
+        sep                    = 4
+        bottomLeftCornerOfText = (max(edge, np.min(qs[:,0])-sep)), max(edge, np.min(qs[:,1])-sep)
+        fontScale              = 1
+        fontColor              = (255,255,255)
+        font_thickness         = 1
+        lineType               = 2
+        cv2.putText(image, str(ID), 
+            bottomLeftCornerOfText, 
+            font, 
+            fontScale,
+            fontColor,
+            font_thickness,
+            lineType)
+        
     return image

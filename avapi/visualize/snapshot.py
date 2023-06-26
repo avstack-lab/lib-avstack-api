@@ -13,6 +13,7 @@ from avstack.environment.objects import VehicleState
 from avstack.geometry import Box2D, Box3D, bbox
 from avstack.geometry.transformations import project_to_image
 from avstack.modules.perception.detections import BoxDetection, MaskDetection
+from avstack.modules.tracking.tracks import BasicBoxTrack3D
 from .base import draw_projected_box3d, get_lidar_color
 
 
@@ -97,6 +98,7 @@ def show_image_with_boxes(
     inline=False,
     box_colors="green",
     with_mask=False,
+    show_IDs=True,
     show=True,
     return_images=False,
     addbox=[],
@@ -113,16 +115,22 @@ def show_image_with_boxes(
         pass
     else:
         boxes = np.asarray([boxes])
-
+        
     # Get color
     if box_colors is None:
         box_colors = ["green"] * len(boxes)
     elif isinstance(box_colors, str):
         box_colors = [box_colors] * len(boxes)
 
+    # Get IDs
+    if show_IDs:
+        box_IDs = [box.ID for box in boxes]
+    else:
+        box_IDs = [None] * len(boxes)
+
     # Show each box
     mask = None
-    for i, (box, col) in enumerate(zip(boxes, box_colors)):
+    for i, (box, col, ID) in enumerate(zip(boxes, box_colors, box_IDs)):
         if isinstance(col, str):
             col = parse_color_string(col)
 
@@ -142,11 +150,11 @@ def show_image_with_boxes(
                 col,
                 2,
             )
-        elif isinstance(box, (VehicleState, Box3D)) or (
+        elif isinstance(box, (VehicleState, Box3D, BasicBoxTrack3D)) or (
             isinstance(box, (BoxDetection, MaskDetection))
             and isinstance(box.box, Box3D)
         ):
-            if isinstance(box, VehicleState):
+            if isinstance(box, (VehicleState, BasicBoxTrack3D)):
                 box = box.box
             elif isinstance(box, (BoxDetection, MaskDetection)):
                 if isinstance(box, MaskDetection):
@@ -154,12 +162,29 @@ def show_image_with_boxes(
                 box = box.box
             if maskfilters.box_in_fov(box, img.calibration):
                 corners_3d_in_image = box.project_corners_to_2d_image_plane(img.calibration)
-                img1 = draw_projected_box3d(img1, corners_3d_in_image, color=col)
+                img1 = draw_projected_box3d(img1, corners_3d_in_image, color=col, ID=ID)
         elif isinstance(box, (avstack.modules.tracking.tracks.XyzFromRazelTrack)):
             pts_box = np.array([[-box.x[1], -box.x[2], box.x[0]]])
             pt = project_to_image(pts_box, img.calibration.P)[0]
             radius = 6
             cv2.circle(img1, (int(pt[0]), int(pt[1])), radius, color=(0,255,0), thickness=-1)
+            if ID is not None:
+                # name on top of box
+                font                   = cv2.FONT_HERSHEY_SIMPLEX
+                edge                   = 15
+                sep                    = 4
+                bottomLeftCornerOfText = (max(edge, box.x[0]-sep)), max(edge, box.x[1]-sep)
+                fontScale              = 1
+                fontColor              = (255,255,255)
+                font_thickness         = 1
+                lineType               = 2
+                cv2.putText(img1, str(ID), 
+                    bottomLeftCornerOfText, 
+                    font, 
+                    fontScale,
+                    fontColor,
+                    font_thickness,
+                    lineType) 
         else:
             raise NotImplementedError(type(box))
         if addbox:
@@ -228,6 +253,8 @@ def show_lidar_bev_with_boxes(
         pass
     else:
         boxes = np.asarray([boxes])
+    boxes = np.array([box.change_reference(point_cloud.calibration.reference,
+                                           inplace=False) for box in boxes])
 
     # Filter points
     if extent is not None:
@@ -236,8 +263,6 @@ def show_lidar_bev_with_boxes(
         pc2 = point_cloud[point_filter, :]
 
         # Filter labels outside extent
-        for box in boxes:
-            box.change_reference(point_cloud.calibration.reference, inplace=True)
         box_filter = maskfilters.filter_boxes_extent(boxes, extent)
         boxes = boxes[box_filter]
         if type(box_colors) in [list, np.ndarray]:
@@ -276,7 +301,7 @@ def show_lidar_bev_with_boxes(
             raise NotImplementedError(type(box))
 
         # Corners in bev --  ***assumes for now pc z axis is up
-        box.change_reference(point_cloud.calibration.reference, inplace=True)
+        # box.change_reference(point_cloud.calibration.reference, inplace=False)
         boxes_show.append(box)
         bev_corners = box.corners[:, :2]
         boxes_show_corners.append(bev_corners)
@@ -333,9 +358,9 @@ def show_lidar_bev_with_boxes(
 
     # Add tracks
     for i, vec in enumerate(vectors):
-        vec.change_origin(point_cloud.calibration.origin)
-        head = (vec.head.vector[:2] - min_arr) / sc_arr
-        tail = (vec.tail.vector[:2] - min_arr) / sc_arr
+        vec.change_reference(point_cloud.calibration.reference, inplace=True)
+        head = (vec.head.x[:2] - min_arr) / sc_arr
+        tail = (vec.tail.x[:2] - min_arr) / sc_arr
         color = (0, 255, 0)
         thickness = 4
         img1 = cv2.arrowedLine(img1, tuple(map(int, head)), tuple(map(int, tail)), color, thickness)
