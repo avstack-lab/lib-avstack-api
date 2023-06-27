@@ -206,7 +206,7 @@ class CarlaSceneDataset(BaseSceneDataset):
     def _load_frames(self, sensor: str):
         return self.sensor_frames[sensor]
 
-    def _load_timestamp(self, frame, sensor):
+    def _load_timestamp(self, frame, sensor, utime=False):
         return self.sensor_frame_to_ts[sensor][frame]
 
     def _load_calibration(self, frame, sensor):

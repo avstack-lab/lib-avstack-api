@@ -7,18 +7,9 @@ import configparser
 
 import numpy as np
 from avstack import calibration
-from avstack.environment.objects import VehicleState
 from avstack.geometry import (
     GlobalOrigin3D,
-    Rotation,
-    Vector,
-    ReferenceFrame,
-    bbox,
-    q_mult_vec,
-    q_stan_to_cam,
-    transformations as tforms
 )
-from avstack.utils import check_xor_for_none
 from cv2 import imread
 from tqdm import tqdm
 
@@ -96,6 +87,9 @@ class Mot15SceneDataset(BaseSceneDataset):
         self.framerate = self.seqinfo.getfloat("Sequence", "frameRate")
         self.interval = 1.0/self.framerate
 
+    def get_ego_reference(self, frame):
+        return GlobalOrigin3D
+    
     def _load_frames(self, **kwargs):
         return self.frames
     

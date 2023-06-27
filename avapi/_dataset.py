@@ -138,6 +138,9 @@ class BaseSceneDataset:
 
     def get_ego(self, frame):
         return self._load_ego(frame)
+    
+    def get_ego_reference(self, frame):
+        return self.get_ego(frame).as_reference()
 
     def get_image(self, frame, sensor=None):
         sensor = self.get_sensor_name(sensor)
@@ -161,9 +164,6 @@ class BaseSceneDataset:
         return sensors.DepthImageData(
             ts, frame, data, calib, self.get_sensor_ID(cam_string)
         )
-    
-    def get_ego_reference(self, frame):
-        return self._load_ego_reference(frame)
 
     def get_lidar(
         self,
@@ -418,18 +418,17 @@ class BaseSceneDataset:
             q_Cstan_to_obj = tforms.transform_orientation([0, 0, yaw], "euler", "quat")
             q_O_to_obj = q_Cstan_to_obj * q_Ccam_to_Cstan
 
+        try:
+            ID = int(ID)
+        except ValueError as e:
+            pass
         pos = Position(np.array([float(p) for p in pos]), object_reference)
         vel = Velocity(np.array([float(v) for v in vel]), object_reference) if vel is not None else None
         acc = Acceleration(np.array([float(a) for a in acc]), object_reference) if acc is not None else None
         rot = Attitude(q_O_to_obj, object_reference)
         ang = AngularVelocity(np.quaternion([float(a) for a in ang]), object_reference) if ang is not None else None
         hwl = [float(b) for b in box_size]
-        box3d = Box3D(pos, rot, hwl, obj_type=obj_type, where_is_t=where_is_t)
-
-        try:
-            ID = int(ID)
-        except ValueError as e:
-            pass
+        box3d = Box3D(pos, rot, hwl, obj_type=obj_type, where_is_t=where_is_t, ID=ID)
         obj = VehicleState(obj_type, ID)
         obj.set(
             t=float(ts),
@@ -608,10 +607,6 @@ class _nuBaseDataset(BaseSceneDataset):
     def _load_image(self, frame, sensor=None):
         img_fname = self._get_sensor_file_name(frame, sensor)
         return imread(img_fname)
-    
-    def _load_ego_reference(self, frame):
-        """Get the ego vehicle as a reference frame"""
-        return self._load_ego(frame).as_reference()
 
     def _load_ego(self, frame):
         ref = GlobalOrigin3D

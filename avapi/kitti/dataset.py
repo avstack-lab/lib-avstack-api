@@ -313,7 +313,7 @@ class KittiObjectDataset(BaseSceneDataset):
             obj.change_reference(object_calib.reference, inplace=True)
         return objects
 
-    def _load_timestamp(self, frame, sensor="lidar"):
+    def _load_timestamp(self, frame, utime=False, sensor="lidar"):
         if os.path.exists(
             os.path.join(self.split_path, self.folder_names["timestamps"])
         ):

@@ -163,28 +163,14 @@ def show_image_with_boxes(
             if maskfilters.box_in_fov(box, img.calibration):
                 corners_3d_in_image = box.project_corners_to_2d_image_plane(img.calibration)
                 img1 = draw_projected_box3d(img1, corners_3d_in_image, color=col, ID=ID)
-        elif isinstance(box, (avstack.modules.tracking.tracks.XyzFromRazelTrack)):
+        elif isinstance(box, (avstack.modules.tracking.tracks.XyzFromRazelTrack,
+                              avstack.modules.perception.detections.RazelDetection)):
             pts_box = np.array([[-box.x[1], -box.x[2], box.x[0]]])
             pt = project_to_image(pts_box, img.calibration.P)[0]
             radius = 6
             cv2.circle(img1, (int(pt[0]), int(pt[1])), radius, color=(0,255,0), thickness=-1)
-            if ID is not None:
-                # name on top of box
-                font                   = cv2.FONT_HERSHEY_SIMPLEX
-                edge                   = 15
-                sep                    = 4
-                bottomLeftCornerOfText = (max(edge, box.x[0]-sep)), max(edge, box.x[1]-sep)
-                fontScale              = 1
-                fontColor              = (255,255,255)
-                font_thickness         = 1
-                lineType               = 2
-                cv2.putText(img1, str(ID), 
-                    bottomLeftCornerOfText, 
-                    font, 
-                    fontScale,
-                    fontColor,
-                    font_thickness,
-                    lineType) 
+            bl_edge = (pt[0], pt[1])
+            add_ID_to_image(img1, bl_edge, ID)
         else:
             raise NotImplementedError(type(box))
         if addbox:
@@ -207,6 +193,26 @@ def show_image_with_boxes(
         show_image(img1, inline=inline)
     if return_images:
         return img1
+
+
+def add_ID_to_image(img, bl_edge, ID):
+    if ID is not None:
+        # name on top of box
+        font                   = cv2.FONT_HERSHEY_SIMPLEX
+        edge                   = 15
+        sep                    = 4
+        bottomLeftCornerOfText = (int(max(edge, bl_edge[0]-sep))), int(max(edge, bl_edge[1]-sep))
+        fontScale              = 1
+        fontColor              = (255,255,255)
+        font_thickness         = 1
+        lineType               = 2
+        cv2.putText(img, str(ID), 
+            bottomLeftCornerOfText, 
+            font, 
+            fontScale,
+            fontColor,
+            font_thickness,
+            lineType) 
 
 
 def show_objects_on_image(img, objects, projection="2d", **kwargs):
