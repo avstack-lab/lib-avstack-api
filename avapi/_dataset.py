@@ -478,8 +478,8 @@ _nominal_whitelist_types = [
 ]
 _nominal_ignore_types = []
 
-occlusion_mapping = {4:Occlusion.MOST, 3:Occlusion.PARTIAL,
-                     2:Occlusion.PARTIAL, 1:Occlusion.NONE}
+occlusion_mapping = {1:Occlusion.MOST, 2:Occlusion.PARTIAL,
+                     3:Occlusion.PARTIAL, 4:Occlusion.NONE}
 
 
 class _nuManager(BaseSceneManager):

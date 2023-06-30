@@ -99,6 +99,7 @@ def show_image_with_boxes(
     box_colors="green",
     with_mask=False,
     show_IDs=True,
+    fontscale=1,
     show=True,
     return_images=False,
     addbox=[],
@@ -162,7 +163,7 @@ def show_image_with_boxes(
                 box = box.box
             if maskfilters.box_in_fov(box, img.calibration):
                 corners_3d_in_image = box.project_corners_to_2d_image_plane(img.calibration)
-                img1 = draw_projected_box3d(img1, corners_3d_in_image, color=col, ID=ID)
+                img1 = draw_projected_box3d(img1, corners_3d_in_image, color=col, ID=ID, fontscale=fontscale)
         elif isinstance(box, (avstack.modules.tracking.tracks.XyzFromRazelTrack,
                               avstack.modules.perception.detections.RazelDetection)):
             pts_box = np.array([[-box.x[1], -box.x[2], box.x[0]]])
@@ -170,7 +171,7 @@ def show_image_with_boxes(
             radius = 6
             cv2.circle(img1, (int(pt[0]), int(pt[1])), radius, color=(0,255,0), thickness=-1)
             bl_edge = (pt[0], pt[1])
-            add_ID_to_image(img1, bl_edge, ID)
+            add_ID_to_image(img1, bl_edge, ID, font_size=fontscale)
         else:
             raise NotImplementedError(type(box))
         if addbox:
@@ -195,21 +196,20 @@ def show_image_with_boxes(
         return img1
 
 
-def add_ID_to_image(img, bl_edge, ID):
+def add_ID_to_image(img, bl_edge, ID, fontscale=1):
     if ID is not None:
         # name on top of box
         font                   = cv2.FONT_HERSHEY_SIMPLEX
         edge                   = 15
         sep                    = 4
         bottomLeftCornerOfText = (int(max(edge, bl_edge[0]-sep))), int(max(edge, bl_edge[1]-sep))
-        fontScale              = 1
         fontColor              = (255,255,255)
         font_thickness         = 1
         lineType               = 2
         cv2.putText(img, str(ID), 
             bottomLeftCornerOfText, 
             font, 
-            fontScale,
+            fontscale,
             fontColor,
             font_thickness,
             lineType) 
