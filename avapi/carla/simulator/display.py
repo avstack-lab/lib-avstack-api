@@ -35,6 +35,8 @@ import weakref
 import carla
 import numpy as np
 import pygame
+from avstack import calibration
+from avstack.geometry import Origin, bbox
 from carla import ColorConverter as cc
 from pygame.locals import (
     K_0,
@@ -75,8 +77,6 @@ from pygame.locals import (
     K_z,
 )
 
-from avstack import calibration
-from avstack.geometry import Origin, bbox
 from avapi.carla.simulator import utils
 
 

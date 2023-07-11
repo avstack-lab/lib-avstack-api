@@ -10,6 +10,7 @@ from copy import copy, deepcopy
 
 import numpy as np
 from avstack.datastructs import DataContainer, DataManager
+from avstack.geometry import GlobalOrigin3D
 from avstack.modules import prediction, tracking
 from avstack.modules.perception.detections import BoxDetection
 
@@ -48,7 +49,12 @@ def make_kitti_tracking_data(KDM, idx_frame, dt=0.1, n_frames=10):
         for lab, v in zip(labs, v_cam):
             lab.box3d.t[2] += t * v  # camera coordinates with z forward
             lab.box2d = lab.box3d.project_to_2d_bbox(calib=calib_camera)
-            det = BoxDetection(name_3d, lab.box3d, lab.obj_type)
+            det = BoxDetection(
+                source_identifier=name_3d,
+                box=lab.box3d,
+                reference=lab.box3d.reference,
+                obj_type=lab.obj_type,
+            )
             dets_class.append(det)
             labs_new.append(lab)
         KDM.save_calibration(i, calib_camera, new_calib_folder, sensor_ID=2)
@@ -66,7 +72,13 @@ def run_tracker(tracker, det_manager, predictor=None):
     dt = 0.1
     while not det_manager.empty():
         dets = det_manager.pop(name_3d)
-        tracks = tracker(detections_nd=dets, t=frame*dt, frame=frame, identifier='tracker-0')
+        tracks = tracker(
+            detections=dets,
+            t=frame * dt,
+            frame=frame,
+            platform=GlobalOrigin3D,
+            identifier="tracker-0",
+        )
         if predictor is not None:
             predictions = predictor(tracks, frame=frame)
         frame += 1
@@ -88,7 +100,7 @@ def test_eval_tracks():
         KDM_new = KOD(KITTI_data_dir, new_folder)
         res_folder = os.path.join(save_folder, "tracking")
         res_frame, res_seq, res_exp = avapi.evaluation.get_track_results_from_folder(
-            KDM_new, res_folder, multiprocess=False, sensor_eval='main_camera'
+            KDM_new, res_folder, multiprocess=False, sensor_eval="main_camera"
         )
         assert len(res_frame) == len(KDM_new.frames)
     else:
@@ -113,8 +125,12 @@ def test_eval_preds():
         # evaluate predictions
         KDM_new = KOD(KITTI_data_dir, new_folder)
         res_folder = os.path.join(save_folder, "prediction")
-        pred_frame, pred_seq, pred_exp = avapi.evaluation.get_predict_results_from_folder(
-            KDM_new, res_folder, multiprocess=False, sensor_eval='main_camera'
+        (
+            pred_frame,
+            pred_seq,
+            pred_exp,
+        ) = avapi.evaluation.get_predict_results_from_folder(
+            KDM_new, res_folder, multiprocess=False, sensor_eval="main_camera"
         )
         assert len(pred_frame) > 0
     else:

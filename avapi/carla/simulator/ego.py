@@ -9,24 +9,19 @@ Define the ego classes
 """
 
 
-import numpy as np
-from carla import Location, VehicleControl
 import random
 
+import numpy as np
 from avstack import GroundTruthInformation
-from avstack.geometry import transformations as tforms
 from avstack.datastructs import DataManager
 from avstack.environment import EnvironmentState
-from avstack.geometry import (
-    NominalOriginStandard,
-    Rotation,
-    Transform,
-    Translation,
-)
+from avstack.geometry import NominalOriginStandard, Rotation, Transform, Translation
+from avstack.geometry import transformations as tforms
 from avstack.modules.perception import detections
+from carla import Location, VehicleControl
 from pygame.locals import K_DOWN, K_LEFT, K_RIGHT, K_SPACE, K_UP, K_q
 
-from avapi.carla.simulator import utils, sensors
+from avapi.carla.simulator import sensors, utils
 
 
 class CarlaEgoActor:

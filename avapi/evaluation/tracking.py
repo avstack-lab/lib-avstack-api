@@ -5,8 +5,8 @@
 # @Last Modified time: 2022-09-09
 
 import glob
-import os
 import logging
+import os
 
 import numpy as np
 from avstack.modules.assignment import gnn_single_frame_assign
@@ -117,7 +117,7 @@ class TrackResultsAnalyzer(ResultAnalyzer):
             else 0
         )
         metrics["recall"] = metrics["nTT"] / metrics["nT"] if metrics["nT"] > 0 else 0
- 
+
         return metrics
 
     @staticmethod
@@ -138,10 +138,11 @@ class TrackResultsAnalyzer(ResultAnalyzer):
         }
 
     @staticmethod
-    def _run_expanded_analysis(DM, save_folder,
-            sensor_eval, sensor_eval_super, whitelist_types, max_dist):
+    def _run_expanded_analysis(
+        DM, save_folder, sensor_eval, sensor_eval_super, whitelist_types, max_dist
+    ):
         """Run HOTA metrics"""
-        tracker_name = 'no-name'
+        tracker_name = "no-name"
 
         # --- metrics evaluator
         eval_config = TrackEvaluator.get_default_eval_config()
@@ -163,11 +164,15 @@ class TrackResultsAnalyzer(ResultAnalyzer):
         try:
             eval_results = evaluator.evaluate([ds], [HOTA(), CLEAR(), VACE(), IDEucl()])
         except ValueError:
-            logging.warning('Obtained value error during evaluation...skipping')
+            logging.warning("Obtained value error during evaluation...skipping")
             mets = {}
         else:
-            mets = eval_results[0]["AvstackTrackDataset"][tracker_name][DM.sequence_id]["all_objects"]
-            mets = {"{}_{}".format(k1, k2): v2 for k1 in mets for k2, v2 in mets[k1].items()} 
+            mets = eval_results[0]["AvstackTrackDataset"][tracker_name][DM.sequence_id][
+                "all_objects"
+            ]
+            mets = {
+                "{}_{}".format(k1, k2): v2 for k1 in mets for k2, v2 in mets[k1].items()
+            }
         return mets
 
 
@@ -179,9 +184,9 @@ class TrackResultsAnalyzer(ResultAnalyzer):
 @staticmethod
 def _compute_centroid(obj_3d):
     if isinstance(obj_3d, (list, np.ndarray)):
-        centroid = np.array([obj.position.vector for obj in obj_3d])
+        centroid = np.array([obj.position.x for obj in obj_3d])
     else:
-        centroid = obj_3d.position.vector
+        centroid = obj_3d.position.x
     return centroid
 
     # box = np.array(box)
@@ -296,8 +301,6 @@ class AvstackTrackDataset(_TrkEvalBaseDataset):
                         IoU = 0
                     cost = IoU
                 elif metric == "center_dist":
-                    if trk.box.origin != gt.box.origin:
-                        trk.box.change_origin(gt.box.origin)
                     dist = gt.box.t.distance(trk.box.t)  # lower is better
                     if dist >= radius:
                         cost = 0
@@ -428,13 +431,13 @@ class AvstackTrackDataset(_TrkEvalBaseDataset):
             if len(raw_data["gt_classes"][t]) > 0:
                 gt_class_mask = raw_data["gt_classes"][t] == obj_type
             else:
-                gt_class_mask = np.zeros((0,), dtype=np.bool)
+                gt_class_mask = np.zeros((0,), dtype=bool)
             gt_ids = raw_data["gt_ids"][t][gt_class_mask]
             gt_trks = raw_data["gt_dets"][t][gt_class_mask]
             if len(raw_data["tracker_classes"][t]) > 0:
                 trk_class_mask = raw_data["tracker_classes"][t] == obj_type
             else:
-                trk_class_mask = np.zeros((0,), dtype=np.bool)
+                trk_class_mask = np.zeros((0,), dtype=bool)
             trk_ids = raw_data["tracker_ids"][t][trk_class_mask]
             trk_trks = raw_data["tracker_dets"][t][trk_class_mask]
             sim_scores = raw_data["similarity_scores"][t][gt_class_mask, :][
@@ -483,10 +486,10 @@ class AvstackTrackDataset(_TrkEvalBaseDataset):
         num_gt_dets = num_tracker_dets = 0
         for t in range(raw_data["num_timesteps"]):
             data["gt_ids"][t] = np.array(
-                [gt_id_map[gt_id] for gt_id in data["gt_ids"][t]], dtype=np.int
+                [gt_id_map[gt_id] for gt_id in data["gt_ids"][t]], dtype=int
             )
             data["tracker_ids"][t] = np.array(
-                [trk_id_map[trk_id] for trk_id in data["tracker_ids"][t]], dtype=np.int
+                [trk_id_map[trk_id] for trk_id in data["tracker_ids"][t]], dtype=int
             )
             num_gt_dets += len(data["gt_dets"])
             num_tracker_dets += len(data["tracker_dets"])

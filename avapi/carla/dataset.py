@@ -12,7 +12,7 @@ import os
 
 import numpy as np
 from avstack import calibration
-from avstack.geometry import ReferenceFrame, Vector, Rotation, q_mult_vec
+from avstack.geometry import ReferenceFrame, Rotation, Vector, q_mult_vec
 from cv2 import imread, imwrite
 
 from .._dataset import BaseSceneDataset, BaseSceneManager
@@ -155,7 +155,9 @@ class CarlaSceneDataset(BaseSceneDataset):
         self.sensor_frames = sensor_frames
         self.file_endings = file_endings
         self.sensor_IDs = sensor_IDs
-        self.framerate = 1 / np.median(np.diff(list(self.sensor_frame_to_ts[self.sensors['main_camera']].values())))
+        self.framerate = 1 / np.median(
+            np.diff(list(self.sensor_frame_to_ts[self.sensors["main_camera"]].values()))
+        )
         super().__init__(whitelist_types, ignore_types)
 
     @property

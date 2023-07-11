@@ -1,4 +1,3 @@
-
 import glob
 import os
 from copy import deepcopy
@@ -8,6 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.widgets import Slider
 
+
 try:
     from ipywidgets import interact, widgets
 except ModuleNotFoundError as e:
@@ -16,14 +16,16 @@ except ModuleNotFoundError as e:
 from avstack.environment.objects import VehicleState
 from avstack.geometry import StandardCoordinates, bbox
 from avstack.modules.perception.detections import BoxDetection
-from avapi.evaluation import color_from_object_type
+
+from avapi.evaluation import ResultManager, color_from_object_type
+
 from .snapshot import show_image_with_boxes
-from avapi.evaluation import ResultManager
 
 
 # ========================================================
 # BASE REPLAY HELPERS
 # ========================================================
+
 
 class _VideoReplay:
     def __init__(self, SM):
@@ -111,10 +113,8 @@ def replay_ground_truth_from_folder(folder, viz_type="track"):
     ego_box = new_ego[0].box3d
     if viz_type == "track":
         replay_track_results(
-            track_results_in=object_results,
-            extent=extent,
-            ego_box=ego_box,
-            inline=True)
+            track_results_in=object_results, extent=extent, ego_box=ego_box, inline=True
+        )
     elif viz_type == "track_percep":
         raise NotImplementedError
         # create_track_percep_movie()
@@ -133,9 +133,12 @@ def replay_ground_truth_from_data_manager(DM, sensor="main_camera"):
     #     new_npcs.append([ego.global_to_local(npc) for npc in npcs])
     #     new_ego.append(ego.global_to_local(ego))
     new_npcs = npc_data
-    
+
     # -- track results are the objects themselves
-    object_results = {i: ResultManager(idx=i, detections=[], truths=npcs) for i, npcs in enumerate(new_npcs)}
+    object_results = {
+        i: ResultManager(idx=i, detections=[], truths=npcs)
+        for i, npcs in enumerate(new_npcs)
+    }
 
     # -- create movie
     replay_track_percep_results(
@@ -210,7 +213,7 @@ def replay_track_results(
     trk_preds = {}  # ID: frame: dt_future: pt
 
     for idx, tr in track_results.items():
-        for track in tr['result'].tracks:
+        for track in tr["result"].tracks:
             if isinstance(track, VehicleState):
                 track.change_origin(NominalOriginStandard)
                 if track.ID not in trk_points:
@@ -223,7 +226,7 @@ def replay_track_results(
                         trk_preds[track.ID][idx][dt_f] = track.predict(dt_f).box3d.t
                 else:
                     raise NotImplementedError(type(track))
-        for truth in tr['result'].truths:
+        for truth in tr["result"].truths:
             if isinstance(truth, VehicleState):
                 truth.change_origin(NominalOriginStandard)
 
@@ -292,11 +295,13 @@ def replay_track_results(
         # -- show true objects and tracks
         if idx in track_results:
             plot_tracks(
-                track_results[idx]['result'].colors["detections"],
-                track_results[idx]['result'].tracks
+                track_results[idx]["result"].colors["detections"],
+                track_results[idx]["result"].tracks,
             )
-            plot_tracks(track_results[idx]['result'].colors["truths"],
-                        track_results[idx]['result'].truths)
+            plot_tracks(
+                track_results[idx]["result"].colors["truths"],
+                track_results[idx]["result"].truths,
+            )
 
         # -- add lines
         if show_track_lines:
@@ -524,16 +529,16 @@ def replay_track_percep_results(
             idx = idxs_record[i_start + i]
             calib = DM.get_calibration(idx, sensor)
             track_boxes = []
-            for trk in track_results[idx]['result'].tracks:
+            for trk in track_results[idx]["result"].tracks:
                 trk_copy = deepcopy(trk).as_object()
                 trk_copy.change_origin(calib.origin)
                 track_boxes.append(trk_copy)
-            box_colors = track_results[idx]['result'].colors["detections"]
+            box_colors = track_results[idx]["result"].colors["detections"]
             if show_truth:
-                for truth in track_results[idx]['result'].truths:
+                for truth in track_results[idx]["result"].truths:
                     truth.box.change_origin(calib.origin)
                     track_boxes.append(truth)
-                box_colors.extend(track_results[idx]['result'].colors["truths"])
+                box_colors.extend(track_results[idx]["result"].colors["truths"])
         else:
             idx = i_start + i
             calib = DM.get_calibration(idx, sensor)

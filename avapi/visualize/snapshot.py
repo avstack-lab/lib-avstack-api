@@ -1,12 +1,9 @@
-
 from copy import deepcopy
+
+import avstack
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
-from PIL import Image
-from avapi.evaluation import parse_color_string
-
-import avstack
 from avstack import maskfilters
 from avstack.datastructs import DataContainer
 from avstack.environment.objects import VehicleState
@@ -14,6 +11,10 @@ from avstack.geometry import Box2D, Box3D, bbox
 from avstack.geometry.transformations import project_to_image
 from avstack.modules.perception.detections import BoxDetection, MaskDetection
 from avstack.modules.tracking.tracks import BasicBoxTrack3D
+from PIL import Image
+
+from avapi.evaluation import parse_color_string
+
 from .base import draw_projected_box3d, get_lidar_color
 
 
@@ -51,7 +52,7 @@ def show_lidar_on_image(
     import matplotlib.pyplot as plt
 
     img1 = np.copy(img.data)
-    if img.calibration.channel_order == 'bgr':
+    if img.calibration.channel_order == "bgr":
         img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2RGB)
 
     box2d_image = bbox.Box2D([0, 0, img1.shape[1], img1.shape[0]], img.calibration)
@@ -106,7 +107,7 @@ def show_image_with_boxes(
 ):
     """Show image with bounding boxes"""
     img1 = np.copy(img.data)
-    if img.calibration.channel_order == 'bgr':
+    if img.calibration.channel_order == "bgr":
         img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2RGB)
 
     # Make appropriate types
@@ -116,7 +117,7 @@ def show_image_with_boxes(
         pass
     else:
         boxes = np.asarray([boxes])
-        
+
     # Get color
     if box_colors is None:
         box_colors = ["green"] * len(boxes)
@@ -151,6 +152,8 @@ def show_image_with_boxes(
                 col,
                 2,
             )
+            bl_edge = (box.xmin, box.ymin)
+            add_ID_to_image(img1, bl_edge, ID, fontscale=fontscale)
         elif isinstance(box, (VehicleState, Box3D, BasicBoxTrack3D)) or (
             isinstance(box, (BoxDetection, MaskDetection))
             and isinstance(box.box, Box3D)
@@ -162,16 +165,27 @@ def show_image_with_boxes(
                     mask = box.mask
                 box = box.box
             if maskfilters.box_in_fov(box, img.calibration):
-                corners_3d_in_image = box.project_corners_to_2d_image_plane(img.calibration)
-                img1 = draw_projected_box3d(img1, corners_3d_in_image, color=col, ID=ID, fontscale=fontscale)
-        elif isinstance(box, (avstack.modules.tracking.tracks.XyzFromRazelTrack,
-                              avstack.modules.perception.detections.RazelDetection)):
+                corners_3d_in_image = box.project_corners_to_2d_image_plane(
+                    img.calibration
+                )
+                img1 = draw_projected_box3d(
+                    img1, corners_3d_in_image, color=col, ID=ID, fontscale=fontscale
+                )
+        elif isinstance(
+            box,
+            (
+                avstack.modules.tracking.tracks.XyzFromRazelTrack,
+                avstack.modules.perception.detections.RazelDetection,
+            ),
+        ):
             pts_box = np.array([[-box.x[1], -box.x[2], box.x[0]]])
             pt = project_to_image(pts_box, img.calibration.P)[0]
             radius = 6
-            cv2.circle(img1, (int(pt[0]), int(pt[1])), radius, color=(0,255,0), thickness=-1)
+            cv2.circle(
+                img1, (int(pt[0]), int(pt[1])), radius, color=(0, 255, 0), thickness=-1
+            )
             bl_edge = (pt[0], pt[1])
-            add_ID_to_image(img1, bl_edge, ID, font_size=fontscale)
+            add_ID_to_image(img1, bl_edge, ID, fontscale=fontscale)
         else:
             raise NotImplementedError(type(box))
         if addbox:
@@ -199,20 +213,25 @@ def show_image_with_boxes(
 def add_ID_to_image(img, bl_edge, ID, fontscale=1):
     if ID is not None:
         # name on top of box
-        font                   = cv2.FONT_HERSHEY_SIMPLEX
-        edge                   = 15
-        sep                    = 4
-        bottomLeftCornerOfText = (int(max(edge, bl_edge[0]-sep))), int(max(edge, bl_edge[1]-sep))
-        fontColor              = (255,255,255)
-        font_thickness         = 1
-        lineType               = 2
-        cv2.putText(img, str(ID), 
-            bottomLeftCornerOfText, 
-            font, 
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        edge = 15
+        sep = 4
+        bottomLeftCornerOfText = (int(max(edge, bl_edge[0] - sep))), int(
+            max(edge, bl_edge[1] - sep)
+        )
+        fontColor = (255, 255, 255)
+        font_thickness = 1
+        lineType = 2
+        cv2.putText(
+            img,
+            str(ID),
+            bottomLeftCornerOfText,
+            font,
             fontscale,
             fontColor,
             font_thickness,
-            lineType) 
+            lineType,
+        )
 
 
 def show_objects_on_image(img, objects, projection="2d", **kwargs):
@@ -259,8 +278,12 @@ def show_lidar_bev_with_boxes(
         pass
     else:
         boxes = np.asarray([boxes])
-    boxes = np.array([box.change_reference(point_cloud.calibration.reference,
-                                           inplace=False) for box in boxes])
+    boxes = np.array(
+        [
+            box.change_reference(point_cloud.calibration.reference, inplace=False)
+            for box in boxes
+        ]
+    )
 
     # Filter points
     if extent is not None:
@@ -369,10 +392,13 @@ def show_lidar_bev_with_boxes(
         tail = (vec.tail.x[:2] - min_arr) / sc_arr
         color = (0, 255, 0)
         thickness = 4
-        img1 = cv2.arrowedLine(img1, tuple(map(int, head)), tuple(map(int, tail)), color, thickness)
+        img1 = cv2.arrowedLine(
+            img1, tuple(map(int, head)), tuple(map(int, tail)), color, thickness
+        )
 
     # Add lines to the image if passed in
     if lines is not None:
+
         def plot_line(img1, line, line_color):
             """Assume line is a 2xn array"""
             color = parse_color_string(line_color)

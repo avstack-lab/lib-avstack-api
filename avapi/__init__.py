@@ -13,8 +13,8 @@ import avapi.evaluation
 import avapi.kitti
 import avapi.mot15
 import avapi.nuscenes
-import avapi.visualize
 import avapi.opv2v
+import avapi.visualize
 
 
 def get_scene_manager(dataset, data_dir, split, verbose=False):

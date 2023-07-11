@@ -122,9 +122,9 @@ class PredictResultsAnalyzer(ResultAnalyzer):
                 continue
             else:
                 t_pred = t_pred[0]
-            pred = [predictions[pred_ID][t_pred]["prediction"]]
+            pred = [pred.box3d for pred in [predictions[pred_ID][t_pred]["prediction"]]]
             frame = time_to_frame_map[t_pred]
-            truths = truths_all[frame]
+            truths = [tru.box3d for tru in truths_all[frame]]
             result_3d = ResultManager(frame, pred, truths, [], metric="3D_IoU")
             asgn_tups = result_3d.assignment.assignment_tuples
             if len(asgn_tups) == 1:
@@ -195,7 +195,7 @@ class PredictResultsAnalyzer(ResultAnalyzer):
             "n_with_truth": n_with_truth,
             "n_objects": n_tot,
         }
-    
+
     @staticmethod
     def _run_expanded_analysis(*args, **kwargs):
         return None

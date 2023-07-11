@@ -93,7 +93,6 @@ class ResultAnalyzer:
         res_frame, res_seq, res_exp = self._results_from_folder()
         return res_frame, res_seq, res_exp
 
-
     def _results_from_folder(self):
         # Check directory
         glob_dir = glob.glob(os.path.join(self.result_path, "*.txt"))
@@ -136,7 +135,14 @@ class ResultAnalyzer:
         res_seq = self._run_per_seq_analysis(res_frame)
 
         # -- run expanded analysis
-        res_exp = self._run_expanded_analysis(self.DM, self.result_path, self.sensor_eval, self.sensor_eval_super, self.whitelist_types, self.max_dist)
+        res_exp = self._run_expanded_analysis(
+            self.DM,
+            self.result_path,
+            self.sensor_eval,
+            self.sensor_eval_super,
+            self.whitelist_types,
+            self.max_dist,
+        )
 
         return res_frame, res_seq, res_exp
 
@@ -214,7 +220,7 @@ class ResultManager:
 
         # Put detections into the coordinate frame of the truths
         assert all(
-            [tru.origin == self.truths[0].origin for tru in self.truths]
+            [tru.reference.allclose(self.truths[0].reference) for tru in self.truths]
         ), "All truth origins must be the same for now"
 
         # Run assignment
@@ -513,7 +519,10 @@ def _get_assignment_cost(det, tru, metric, radius2):
             try:
                 cost = -det.IoU(tru)
             except AttributeError as e:
-                raise AttributeError('Could not find a suitable attribute...did you want a 2D_IoU as metric?')
+                raise AttributeError(
+                    "Could not find a suitable attribute...did you want a 2D_IoU as metric? "
+                    + str(e)
+                )
         if cost > -0.01:
             cost = np.inf
     elif metric == "center_dist":

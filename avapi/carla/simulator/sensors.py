@@ -16,12 +16,9 @@ import weakref
 import avstack.sensors
 import carla
 import numpy as np
-from avstack.geometry import transformations as tforms
 from avstack.calibration import Calibration, CameraCalibration
-from avstack.geometry import (
-    Origin,
-    q_stan_to_cam,
-)
+from avstack.geometry import Origin, q_stan_to_cam
+from avstack.geometry import transformations as tforms
 from carla import ColorConverter as cc
 
 from avapi.carla.simulator import utils
@@ -206,8 +203,11 @@ class RgbCameraSensor(Sensor):
         self = weak_self()
         image.convert(cc.Raw)
         # I guess we need to do the conversion here....
-        np_img = np.reshape(np.array(image.raw_data, dtype=np.float32),
-                           (image.height, image.width, 4))[:,:,:3]  # BGRA
+        np_img = np.reshape(
+            np.array(image.raw_data, dtype=np.float32), (image.height, image.width, 4)
+        )[
+            :, :, :3
+        ]  # BGRA
         self._make_data_class(image.timestamp, image.frame, np_img)
 
 

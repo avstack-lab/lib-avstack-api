@@ -8,6 +8,7 @@
 
 """
 import glob
+import json
 import os
 import re
 import shutil
@@ -17,17 +18,17 @@ import numpy as np
 from avstack import calibration
 from avstack.environment.objects import VehicleState
 from avstack.geometry import (
-    Position,
     Attitude,
+    GlobalOrigin3D,
+    Position,
+    ReferenceFrame,
     Rotation,
     Vector,
-    ReferenceFrame,
-    GlobalOrigin3D,
     bbox,
     q_mult_vec,
     q_stan_to_cam,
-    transformations as tforms
 )
+from avstack.geometry import transformations as tforms
 from avstack.utils import check_xor_for_none
 from cv2 import imread
 from tqdm import tqdm
@@ -153,7 +154,6 @@ class KittiObjectDataset(BaseSceneDataset):
         self.sequence_id = split
         super().__init__(whitelist_types, ignore_types)
 
-
     @property
     def frames(self):
         """Wrapper to the classmethod using the split path"""
@@ -169,11 +169,8 @@ class KittiObjectDataset(BaseSceneDataset):
         h, w, l = self.ego_size
         pos = Position(np.zeros((3,)), reference)
         rot = Attitude(np.quaternion(1), reference)
-        box = bbox.Box3D(pos, rot, [h,w,l], where_is_t='bottom')
-        ego.set(self.get_timestamp(frame),
-                pos,
-                box,
-                attitude=rot)
+        box = bbox.Box3D(pos, rot, [h, w, l], where_is_t="bottom")
+        ego.set(self.get_timestamp(frame), pos, box, attitude=rot)
         return ego
 
     @classmethod
@@ -219,10 +216,14 @@ class KittiObjectDataset(BaseSceneDataset):
         calib_fname = os.path.join(
             self.split_path, self.folder_names["calibration"], "%06d.txt" % frame
         )
-        return self._load_calibration_from_file(calib_fname, sensor, self.img_shape, ego_reference)
+        return self._load_calibration_from_file(
+            calib_fname, sensor, self.img_shape, ego_reference
+        )
 
     @staticmethod
-    def _load_calibration_from_file(file, sensor, img_shape, ego_reference, ego_height=1.49):
+    def _load_calibration_from_file(
+        file, sensor, img_shape, ego_reference, ego_height=1.49
+    ):
         if sensor == "labels":
             sensor = "image-2"
         calib_data = KittiObjectDataset.read_dict_text_file(file)
@@ -251,7 +252,9 @@ class KittiObjectDataset(BaseSceneDataset):
             P = np.reshape(
                 calib_data["P%s" % sensor.lower().replace("image-", "")], [3, 4]
             )
-            calib = calibration.CameraCalibration(reference, P, img_shape, channel_order='bgr')
+            calib = calibration.CameraCalibration(
+                reference, P, img_shape, channel_order="bgr"
+            )
         elif "lidar" in sensor.lower():
             # -- get transform from cam 0 to lidar
             R_velo_to_cam0 = np.reshape(calib_data["Tr_velo_to_cam"], [3, 4])[:3, :3]
@@ -264,7 +267,9 @@ class KittiObjectDataset(BaseSceneDataset):
             # -- combine
             x_O_2_L_in_O = np.array([-0.27, 0, 1.73 - ego_height / 2])
             q_O_2_L = q_C0_2_L * q_O_2_C0
-            calib = calibration.Calibration(ReferenceFrame(x_O_2_L_in_O, q_O_2_L, ego_reference))
+            calib = calibration.Calibration(
+                ReferenceFrame(x_O_2_L_in_O, q_O_2_L, ego_reference)
+            )
         else:
             raise NotImplementedError(sensor)
         return calib
@@ -298,7 +303,7 @@ class KittiObjectDataset(BaseSceneDataset):
     def _load_objects(
         self,
         frame,
-        sensor='image-2',
+        sensor="image-2",
         whitelist_types=["Car", "Pedestrian", "Cyclist"],
         ignore_types=["DontCare"],
     ):
@@ -334,11 +339,12 @@ class KittiObjectDataset(BaseSceneDataset):
             f.write(calib_text_str)
 
     def _save_objects(self, frame, objects, folder, file):
-        object_text_str = "\n".join([obj.format_as("kitti") for obj in objects])
         if file is None:
             file = os.path.join(folder, "%06d.txt" % frame)
         with open(file, "w") as f:
-            f.write(object_text_str)
+            str_list = [obj.encode() for obj in objects]
+            for line in str_list:
+                f.write(f"{line}\n")
 
     def _get_sensor_file_name(self, frame, sensor: str):
         return os.path.join(
@@ -481,7 +487,9 @@ class KittiRawDataset:
             try:
                 id_seq = ids_options[idx_seq]
             except IndexError as e:
-                raise IndexError("list index out of range...have you downloaded the tracklets to go with scenes?")
+                raise IndexError(
+                    "list index out of range...have you downloaded the tracklets to go with scenes?"
+                )
         seq_folder = os.path.join(self.data_dir, date, id_seq)
         assert os.path.exists(seq_folder), f"{seq_folder} does not exist"
         exp_path = os.path.join(

@@ -8,7 +8,7 @@ import os
 
 import numpy as np
 from avstack.geometry import bbox
-from avstack.modules.perception.detections import BoxDetection, get_detections_from_file
+from avstack.modules.perception.detections import BoxDetection, DetectionDecoder
 
 from avapi.evaluation.base import ResultAnalyzer, ResultManager
 

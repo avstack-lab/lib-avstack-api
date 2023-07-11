@@ -17,7 +17,7 @@ class nuImagesDataset(_nuBaseDataset):
     CFG["IMAGE_HEIGHT"] = 900
     CFG["IMAGE_CHANNEL"] = 3
     img_shape = (CFG["IMAGE_HEIGHT"], CFG["IMAGE_WIDTH"], CFG["IMAGE_CHANNEL"])
-    sensors = {"main_camera": "CAM_FRONT", "main-camera":"CAM_FRONT"}
+    sensors = {"main_camera": "CAM_FRONT", "main-camera": "CAM_FRONT"}
     keyframerate = 2
     sensor_IDs = {
         "CAM_BACK": 3,

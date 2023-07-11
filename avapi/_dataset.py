@@ -9,27 +9,27 @@
 """
 
 import hashlib
+import json
 import os
 
 import numpy as np
 from avstack import calibration, sensors
-from avstack.environment.objects import Occlusion, VehicleState
+from avstack.environment.objects import ObjectStateDecoder, Occlusion, VehicleState
 from avstack.geometry import (
-    Position,
-    Velocity,
     Acceleration,
-    Attitude,
     AngularVelocity,
-    ReferenceFrame,
-    GlobalOrigin3D,
+    Attitude,
     Box3D,
+    GlobalOrigin3D,
     PointMatrix3D,
+    Position,
+    ReferenceFrame,
+    Velocity,
     q_cam_to_stan,
     q_mult_vec,
-    transformations as tforms,
-    get_reference_from_line
 )
-from avstack.modules.tracking.tracks import get_track_from_line
+from avstack.geometry import transformations as tforms
+from avstack.modules.tracking.tracks import TrackContainerDecoder
 from cv2 import imread
 
 
@@ -73,7 +73,7 @@ class BaseSceneManager:
 
     def get_scene_dataset_by_name(self):
         raise NotImplementedError
-    
+
     def get_scene_dataset_by_index(self):
         raise NotImplementedError
 
@@ -111,7 +111,6 @@ class BaseSceneDataset:
             frame in self.frames
         ), f"Candidate frame, {frame}, not in frame set {self.frames}"
 
-
     def get_sensor_ID(self, sensor):
         try:
             return self.sensor_IDs[sensor]
@@ -138,7 +137,7 @@ class BaseSceneDataset:
 
     def get_ego(self, frame):
         return self._load_ego(frame)
-    
+
     def get_ego_reference(self, frame):
         return self.get_ego(frame).as_reference()
 
@@ -149,7 +148,9 @@ class BaseSceneDataset:
         cam_string = "image-%i" % sensor if isinstance(sensor, int) else sensor
         cam_string = cam_string if sensor is not None else self.sensor_name(frame)
         calib = self.get_calibration(frame, cam_string)
-        return sensors.ImageData(ts, frame, data, calib, self.get_sensor_ID(cam_string), channel_order='rgb')
+        return sensors.ImageData(
+            ts, frame, data, calib, self.get_sensor_ID(cam_string), channel_order="rgb"
+        )
 
     def get_sensor_data_filepath(self, frame, sensor):
         sensor = self.get_sensor_name(sensor)
@@ -201,12 +202,16 @@ class BaseSceneDataset:
         ts = self.get_timestamp(frame, sensor)
         calib = self.get_calibration(frame, sensor)
         data = self._load_radar(frame, sensor)  # razelrrt data
-        rad = sensors.RadarDataRazelRRT(ts, frame, data, calib, self.get_sensor_ID(sensor))
+        rad = sensors.RadarDataRazelRRT(
+            ts, frame, data, calib, self.get_sensor_ID(sensor)
+        )
         if (min_range is not None) or (max_range is not None):
             rad.filter_by_range(min_range, max_range, inplace=True)
         return rad
-    
-    def get_objects(self, frame, sensor="main_camera", max_dist=None, max_occ=None, **kwargs):
+
+    def get_objects(
+        self, frame, sensor="main_camera", max_dist=None, max_occ=None, **kwargs
+    ):
         reference = self.get_ego_reference(frame)
         sensor = self.get_sensor_name(sensor)
         objs = self._load_objects(frame, sensor=sensor, **kwargs)
@@ -225,7 +230,11 @@ class BaseSceneDataset:
             else:
                 calib = self.get_calibration(frame, sensor)
             objs = np.array(
-                [obj for obj in objs if obj.position.distance(calib.reference) < max_dist]
+                [
+                    obj
+                    for obj in objs
+                    if obj.position.distance(calib.reference) < max_dist
+                ]
             )
         return objs
 
@@ -238,6 +247,9 @@ class BaseSceneDataset:
     def get_timestamp(self, frame, sensor="lidar", utime=False):
         sensor = self.get_sensor_name(sensor)
         return self._load_timestamp(frame, sensor=sensor, utime=utime)
+
+    def get_sensor_file_path(self, frame, sensor):
+        return self._get_sensor_file_name(frame, sensor)
 
     def save_calibration(self, frame, calib, folder, **kwargs):
         if not os.path.exists(folder):
@@ -292,8 +304,10 @@ class BaseSceneDataset:
             lines = [line.rstrip() for line in f.readlines()]
         objects = []
         for line in lines:
-            if "track" in line:
-                obj = get_track_from_line(line)
+            if "datacontainer" in line:
+                dc = json.loads(line, cls=TrackContainerDecoder)
+                objects = dc.data
+                break
             else:
                 obj = self.parse_label_line(line)
             # -- type filter
@@ -341,7 +355,7 @@ class BaseSceneDataset:
     def parse_label_line(self, label_file_line):
         # Parse data elements
         data = label_file_line.strip("\n").split(" ")
-        if (data[0] in ["avstack", "nuscenes"]):
+        if data[0] in ["avstack", "nuscenes"]:
             idx = 2
             ts = data[idx]
             idx += 1
@@ -401,7 +415,10 @@ class BaseSceneDataset:
             q_O_to_V = object_reference.q.conjugate()
             q_O_to_obj = q_V_to_obj * q_O_to_V
 
-        elif data[0] == "kitti":  # assume kitti with no prefix -- this is for kitti static dataset
+        elif label_file_line[0] == "{":
+            obj = json.loads(label_file_line, cls=ObjectStateDecoder)
+            return obj
+        else:  # data[0] == "kitti":  # assume kitti with no prefix -- this is for kitti static dataset
             ts = 0.0
             ID = np.random.randint(low=0, high=1e6)  # not ideal but ensures unique IDs
             obj_type = data[0]
@@ -412,7 +429,12 @@ class BaseSceneDataset:
             box_size = data[8:11]
             pos = t_box
             vel = acc = ang = None
-            yaw = -float(data[14]) - np.pi / 2
+            try:
+                yaw = -float(data[14]) - np.pi / 2
+            except ValueError:
+                import pdb
+
+                pdb.set_trace()
             object_reference = self.get_calibration(self.frames[0], "image-2").reference
             q_Ccam_to_Cstan = q_cam_to_stan
             q_Cstan_to_obj = tforms.transform_orientation([0, 0, yaw], "euler", "quat")
@@ -423,10 +445,22 @@ class BaseSceneDataset:
         except ValueError as e:
             pass
         pos = Position(np.array([float(p) for p in pos]), object_reference)
-        vel = Velocity(np.array([float(v) for v in vel]), object_reference) if vel is not None else None
-        acc = Acceleration(np.array([float(a) for a in acc]), object_reference) if acc is not None else None
+        vel = (
+            Velocity(np.array([float(v) for v in vel]), object_reference)
+            if vel is not None
+            else None
+        )
+        acc = (
+            Acceleration(np.array([float(a) for a in acc]), object_reference)
+            if acc is not None
+            else None
+        )
         rot = Attitude(q_O_to_obj, object_reference)
-        ang = AngularVelocity(np.quaternion([float(a) for a in ang]), object_reference) if ang is not None else None
+        ang = (
+            AngularVelocity(np.quaternion([float(a) for a in ang]), object_reference)
+            if ang is not None
+            else None
+        )
         hwl = [float(b) for b in box_size]
         box3d = Box3D(pos, rot, hwl, obj_type=obj_type, where_is_t=where_is_t, ID=ID)
         obj = VehicleState(obj_type, ID)
@@ -478,8 +512,12 @@ _nominal_whitelist_types = [
 ]
 _nominal_ignore_types = []
 
-occlusion_mapping = {1:Occlusion.MOST, 2:Occlusion.PARTIAL,
-                     3:Occlusion.PARTIAL, 4:Occlusion.NONE}
+occlusion_mapping = {
+    1: Occlusion.MOST,
+    2: Occlusion.PARTIAL,
+    3: Occlusion.PARTIAL,
+    4: Occlusion.NONE,
+}
 
 
 class _nuManager(BaseSceneManager):
@@ -512,8 +550,10 @@ class _nuBaseDataset(BaseSceneDataset):
         self.nuX = nuX
         self.nuX_can = nuX_can
         if nuX_can is not None:
-            self.vehicle_pose = self.nuX_can.get_messages(self.scene['name'], 'pose')
-            self.vehicle_pose_utime = np.array([vp["utime"] for vp in self.vehicle_pose])
+            self.vehicle_pose = self.nuX_can.get_messages(self.scene["name"], "pose")
+            self.vehicle_pose_utime = np.array(
+                [vp["utime"] for vp in self.vehicle_pose]
+            )
         else:
             self.vehicle_pose = None
         self.data_dir = data_dir
@@ -565,7 +605,8 @@ class _nuBaseDataset(BaseSceneDataset):
 
     def _get_sensor_file_name(self, frame, sensor=None):
         return os.path.join(
-            self.data_dir, self._get_sensor_record(frame, sensor)["filename"]
+            self.data_dir,
+            self._get_sensor_record(frame, self.get_sensor_name(sensor))["filename"],
         )
 
     def _load_frames(self, sensor: str = None):
@@ -591,7 +632,9 @@ class _nuBaseDataset(BaseSceneDataset):
         sensor = sensor if sensor is not None else self.sensor_name(frame)
         if "CAM" in sensor:
             P = np.hstack((np.array(calib_data["camera_intrinsic"]), np.zeros((3, 1))))
-            calib = calibration.CameraCalibration(reference, P, self.img_shape, channel_order="bgr")
+            calib = calibration.CameraCalibration(
+                reference, P, self.img_shape, channel_order="bgr"
+            )
         else:
             calib = calibration.Calibration(reference)
         return calib
@@ -602,7 +645,6 @@ class _nuBaseDataset(BaseSceneDataset):
             return ut
         else:
             return ut / 1e6 - self.t0
-        
 
     def _load_image(self, frame, sensor=None):
         img_fname = self._get_sensor_file_name(frame, sensor)
@@ -612,15 +654,22 @@ class _nuBaseDataset(BaseSceneDataset):
         ref = GlobalOrigin3D
         if self.vehicle_pose is not None:
             try:
-                frame_vp = np.argmin(abs(self.vehicle_pose_utime - self.get_timestamp(frame, utime=True)))
+                frame_vp = np.argmin(
+                    abs(self.vehicle_pose_utime - self.get_timestamp(frame, utime=True))
+                )
                 vp = self.vehicle_pose[frame_vp]
-                t = vp['utime']  / 1e6 - self.t0
-                x_G_to_E_in_G = Position(vp['pos'], ref)
-                q_G_to_E = Attitude(np.quaternion(*vp['orientation']).conjugate(), ref)
+                t = vp["utime"] / 1e6 - self.t0
+                x_G_to_E_in_G = Position(vp["pos"], ref)
+                q_G_to_E = Attitude(np.quaternion(*vp["orientation"]).conjugate(), ref)
                 q_E_to_G = q_G_to_E.q.conjugate()
-                v_in_G = Velocity(q_mult_vec(q_E_to_G, np.array(vp['vel'])), ref)
-                acc_in_G = Acceleration(q_mult_vec(q_E_to_G,  np.array(vp['accel'])), ref)
-                ang_in_G = AngularVelocity(np.quaternion(*q_mult_vec(q_E_to_G,  np.array(vp['rotation_rate']))), ref)
+                v_in_G = Velocity(q_mult_vec(q_E_to_G, np.array(vp["vel"])), ref)
+                acc_in_G = Acceleration(
+                    q_mult_vec(q_E_to_G, np.array(vp["accel"])), ref
+                )
+                ang_in_G = AngularVelocity(
+                    np.quaternion(*q_mult_vec(q_E_to_G, np.array(vp["rotation_rate"]))),
+                    ref,
+                )
             except Exception as e:
                 raise e  # need to handle this
         else:
@@ -639,7 +688,7 @@ class _nuBaseDataset(BaseSceneDataset):
         box3d = Box3D(x_G_to_E_in_G, q_G_to_E, self.hwl)
 
         # -- set up ego in global reference frame
-        veh = VehicleState(obj_type='car')
+        veh = VehicleState(obj_type="car")
         veh.set(
             t=t,
             position=x_G_to_E_in_G,
@@ -682,7 +731,9 @@ class _nuBaseDataset(BaseSceneDataset):
                 or (whitelist_types == "all")
                 or ("all" in whitelist_types)
             ):
-                obj_token = metadata['instance_token']  # consistent between frames of a scene
+                obj_token = metadata[
+                    "instance_token"
+                ]  # consistent between frames of a scene
                 if obj_token not in self.token_ID_map:
                     self.token_ID_map[obj_token] = len(self.token_ID_map)
                 obj_ID = self.token_ID_map[obj_token]
@@ -690,7 +741,9 @@ class _nuBaseDataset(BaseSceneDataset):
                 velocity = Velocity(self.nuX.box_velocity(box.token), GlobalOrigin3D)
                 velocity.change_reference(reference, inplace=True)
                 acceleration = None
-                attitude = Attitude(np.quaternion(*box.orientation).conjugate(), reference)
+                attitude = Attitude(
+                    np.quaternion(*box.orientation).conjugate(), reference
+                )
                 angular_velocity = None
                 hwl = [box.wlh[2], box.wlh[0], box.wlh[1]]
                 box = Box3D(position, attitude, hwl, where_is_t="center")
@@ -730,27 +783,27 @@ class _nuBaseDataset(BaseSceneDataset):
     #         ]
     #     velocities = [self.nuX.box_velocity(box["box"].token) for box in boxes]
     #     return boxes, velocities
-        # try:
-        #     boxes, velocities = self._get_anns_metadata)
-        # except KeyError:
-        #     boxes, velocities = self._get_anns_metadata(sensor_data["sample_token"])
-        # objects = []
-        # for box, vel in zip(boxes, velocities):
-        #     obj_type = general_to_detection_class[box["name"]]
-        #     if (
-        #         (obj_type in whitelist_types)
-        #         or (whitelist_types == "all")
-        #         or ("all" in whitelist_types)
-        #     ):
-        #         ts = sensor_data["timestamp"]
-        #         import pdb; pdb.set_trace()
-        #         line = self._box_to_line(ts, box["box"], reference)
-        #         obj = self.parse_label_line(line)
-        #         velocity = Velocity(vel, reference=ego.reference)
-        #         velocity.change_reference(reference, inplace=True)
-        #         obj.velocity = velocity
-        #         objects.append(obj)
-        # return np.array(objects)
+    # try:
+    #     boxes, velocities = self._get_anns_metadata)
+    # except KeyError:
+    #     boxes, velocities = self._get_anns_metadata(sensor_data["sample_token"])
+    # objects = []
+    # for box, vel in zip(boxes, velocities):
+    #     obj_type = general_to_detection_class[box["name"]]
+    #     if (
+    #         (obj_type in whitelist_types)
+    #         or (whitelist_types == "all")
+    #         or ("all" in whitelist_types)
+    #     ):
+    #         ts = sensor_data["timestamp"]
+    #         import pdb; pdb.set_trace()
+    #         line = self._box_to_line(ts, box["box"], reference)
+    #         obj = self.parse_label_line(line)
+    #         velocity = Velocity(vel, reference=ego.reference)
+    #         velocity.change_reference(reference, inplace=True)
+    #         obj.velocity = velocity
+    #         objects.append(obj)
+    # return np.array(objects)
 
     def _box_to_line(self, ts, box, reference):
         ID = box.token
