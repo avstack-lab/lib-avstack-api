@@ -48,9 +48,9 @@ def test_camera_calibrations():
         frame = 2
         assert NID.sensor_name(frame) == "CAM_BACK"
         calib = NID.get_calibration(frame)
-        assert abs(calib.origin.x[0]) < 0.2
-        assert abs(calib.origin.x[1]) < 0.1
-        assert calib.origin.x[2] > 0
+        assert abs(calib.reference.x[0]) < 0.2
+        assert abs(calib.reference.x[1]) < 0.1
+        assert calib.reference.x[2] > 0
     else:
         logging.warning(msg)
         print(msg)

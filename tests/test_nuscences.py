@@ -78,17 +78,17 @@ def test_get_lidar():
 def test_camera_calibrations():
     if NSM is not None:
         calib = DM_0.get_calibration(0, "CAM_FRONT")
-        assert calib.origin.x[0] > 0
-        assert abs(calib.origin.x[1]) < 0.1
-        assert calib.origin.x[2] > 0
+        assert calib.reference.x[0] > 0
+        assert abs(calib.reference.x[1]) < 0.1
+        assert calib.reference.x[2] > 0
         calib = DM_0.get_calibration(0, "CAM_BACK_RIGHT")
-        assert calib.origin.x[0] > 0
-        assert calib.origin.x[1] < 0
-        assert calib.origin.x[2] > 0
+        assert calib.reference.x[0] > 0
+        assert calib.reference.x[1] < 0
+        assert calib.reference.x[2] > 0
         calib = DM_0.get_calibration(0, "CAM_BACK")
-        assert abs(calib.origin.x[0]) < 0.2
-        assert abs(calib.origin.x[1]) < 0.1
-        assert calib.origin.x[2] > 0
+        assert abs(calib.reference.x[0]) < 0.2
+        assert abs(calib.reference.x[1]) < 0.1
+        assert calib.reference.x[2] > 0
     else:
         logging.warning(msg)
         print(msg)
@@ -97,9 +97,9 @@ def test_camera_calibrations():
 def test_lidar_calibration():
     if NSM is not None:
         calib = DM_0.get_calibration(0, "LIDAR_TOP")
-        assert calib.origin.x[0] > 0
-        assert abs(calib.origin.x[1]) < 0.1
-        assert calib.origin.x[2] > 0
+        assert calib.reference.x[0] > 0
+        assert abs(calib.reference.x[1]) < 0.1
+        assert calib.reference.x[2] > 0
     else:
         logging.warning(msg)
         print(msg)

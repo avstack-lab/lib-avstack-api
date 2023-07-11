@@ -673,18 +673,20 @@ class _nuBaseDataset(BaseSceneDataset):
             except Exception as e:
                 raise e  # need to handle this
         else:
-            raise NotImplementedError("Preferable to use can bus data")
             sd_record = self._get_sensor_record(frame, "LIDAR_TOP")
-            x_G_to_E = self.nuX.get("ego_pose", sd_record["ego_pose_token"])
-            pos = np.array(ego["translation"])
-            rot = np.quaternion(*ego["rotation"]).conjugate()
-            v_in_E = np.zeros(())
-            # sd_record = self._get_sensor_record(frame, sensor)
-            # ego_data = self.nuX.get("ego_pose", sd_record["ego_pose_token"])
-            # # -- get ego velocity
-            # ts = ego_data["timestamp"] / 1e6 - self.t0
-            # line = self._ego_to_line(ts, ego_data)
-            # return self.parse_label_line(line)
+            ego = self.nuX.get("ego_pose", sd_record["ego_pose_token"])
+            t = ego["timestamp"] / 1e6 - self.t0
+            x_G_to_E_in_G = Position(np.array(ego["translation"]), ref)
+            q_G_to_E = Attitude(np.quaternion(*ego["rotation"]).conjugate(), ref)
+            q_E_to_G = q_G_to_E.conjugate()
+            v_in_G = Velocity(ego["speed"] * q_E_to_G.forward_vector, ref)
+            acc_in_G = Acceleration(
+                q_mult_vec(q_E_to_G.q, np.array(ego["acceleration"])), ref
+            )
+            ang_in_G = AngularVelocity(
+                np.quaternion(*q_mult_vec(q_E_to_G.q, np.array(ego["rotation_rate"]))),
+                ref,
+            )
         box3d = Box3D(x_G_to_E_in_G, q_G_to_E, self.hwl)
 
         # -- set up ego in global reference frame
