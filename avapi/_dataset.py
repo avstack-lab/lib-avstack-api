@@ -414,7 +414,6 @@ class BaseSceneDataset:
             q_V_to_obj = tforms.transform_orientation([0, 0, yaw], "euler", "quat")
             q_O_to_V = object_reference.q.conjugate()
             q_O_to_obj = q_V_to_obj * q_O_to_V
-
         elif label_file_line[0] == "{":
             obj = json.loads(label_file_line, cls=ObjectStateDecoder)
             return obj

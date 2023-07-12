@@ -656,7 +656,7 @@ class KittiRawDataset:
                 pos = Position(x_C2_2_obj_in_C2, obj_reference)
                 rot = Attitude(q_C2_2_obj, obj_reference)
                 hwl = [h, w, l]
-                box3d = bbox.Box3D(pos, rot, hwl)
+                box3d = bbox.Box3D(pos, rot, hwl, where_is_t="bottom")
                 obj = VehicleState(trk.objectType, itrk)
                 ts = timestamps["velodyne"][iframe].timestamp()
                 vel = None
