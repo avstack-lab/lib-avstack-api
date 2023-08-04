@@ -547,7 +547,7 @@ def _get_assignment_cost(det, tru, metric, radius2):
             # Check if in view first
             if box_in_fov(tru.box3d, det.box2d.calibration):
                 tru_box = tru.box3d.project_to_2d_bbox(
-                    det.box2d.calibration, check_origin=True
+                    det.box2d.calibration
                 )
             else:
                 return np.inf

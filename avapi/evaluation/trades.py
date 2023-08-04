@@ -318,7 +318,7 @@ def tick_standard(
         SD.get_image(frame, sensor="main_camera")
     )  # defaults to main camera
     # -- run AV
-    AV.tick(frame=frame, data_manager=data_manager, timestamp=None)
+    AV.tick(frame=frame, data_manager=data_manager, timestamp=frame*SD.framerate)
     return data_recur
 
 

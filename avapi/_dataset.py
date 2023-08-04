@@ -47,7 +47,7 @@ class BaseSceneManager:
         return len(self.scenes)
 
     @property
-    def name():
+    def name(self):
         return self.NAME
 
     def list_scenes(self):
@@ -95,7 +95,7 @@ class BaseSceneDataset:
         return len(self.frames)
 
     @property
-    def name():
+    def name(self):
         return self.NAME
 
     @property

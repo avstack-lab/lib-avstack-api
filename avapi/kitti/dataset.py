@@ -23,7 +23,7 @@ from avstack.geometry import (
     ReferenceFrame,
     Rotation,
     Vector,
-    bbox,
+    Box3D,
     q_mult_vec,
     q_stan_to_cam,
 )
@@ -168,8 +168,13 @@ class KittiObjectDataset(BaseSceneDataset):
         h, w, l = self.ego_size
         pos = Position(np.zeros((3,)), reference)
         rot = Attitude(np.quaternion(1), reference)
-        box = bbox.Box3D(pos, rot, [h, w, l], where_is_t="bottom")
-        ego.set(self.get_timestamp(frame), pos, box, attitude=rot)
+        box = Box3D(pos, rot, [h, w, l], where_is_t="bottom")
+        ego.set(
+            t=self.get_timestamp(frame),
+            position=pos,
+            box=box,
+            attitude=rot
+        )
         return ego
 
     @classmethod
@@ -655,7 +660,7 @@ class KittiRawDataset:
                 pos = Position(x_C2_2_obj_in_C2, obj_reference)
                 rot = Attitude(q_C2_2_obj, obj_reference)
                 hwl = [h, w, l]
-                box3d = bbox.Box3D(pos, rot, hwl, where_is_t="bottom")
+                box3d = Box3D(pos, rot, hwl, where_is_t="bottom")
                 obj = VehicleState(trk.objectType, itrk)
                 ts = timestamps["velodyne"][iframe].timestamp()
                 vel = None
