@@ -46,10 +46,10 @@ class nuImagesDataset(_nuBaseDataset):
     def make_sample_records(self):
         self.sample_records = {i: v for i, v in enumerate(self.nuX.sample)}
 
-    def get_image(self, frame):
-        return super().get_image(frame, None)
+    def get_image(self, frame, sensor):
+        return super().get_image(frame, sensor)
 
-    def get_calibration(self, frame, *args):
+    def get_calibration(self, frame, sensor):
         return super().get_calibration(frame, None)
 
     def get_objects(self, frame, *args):

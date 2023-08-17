@@ -45,6 +45,10 @@ class CarlaScenesManager(BaseSceneManager):
         """
         data_dir: the base folder where all scenes are kept
         """
+        raise NotImplementedError('The carla scene manager will not work'
+                            ' until the owner of the carla dataset regenerates'
+                            ' it with the latest AVstack geometry format.')
+
         if not os.path.exists(data_dir):
             raise RuntimeError(f"Cannot find data dir at {data_dir}")
         self.data_dir = data_dir
@@ -79,6 +83,9 @@ class CarlaSceneDataset(BaseSceneDataset):
         whitelist_types=_nominal_whitelist_types,
         ignore_types=_nominal_ignore_types,
     ):
+        raise NotImplementedError('The carla scene manager will not work'
+                            ' until the owner of the carla dataset regenerates'
+                            ' it with the latest AVstack geometry format.')
         self.data_dir = data_dir
         self.scene = scene
         self.sequence_id = scene
