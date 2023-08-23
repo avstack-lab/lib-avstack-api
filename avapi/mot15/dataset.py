@@ -34,6 +34,7 @@ class MOT15SceneManager(BaseSceneManager):
             ]
         )
         self.splits_scenes = None  # use the different splits instead
+        self.scenes_with_3d = ["ETH-Bahnhof", "ETH-Sunnyday", "PETS09-S2L1", "TUD-Stadtmitte"]
 
     def get_scene_dataset_by_name(self, scene):
         return Mot15SceneDataset(self.data_dir, self.split, scene)
@@ -100,6 +101,7 @@ class Mot15SceneDataset(BaseSceneDataset):
         self.interval = 1.0 / self.framerate
 
         # load in ground truth
+        self.has_3d = False
         if self.split != "test":
             gt_path = os.path.join(
                 self.data_dir, self.split, self.scene, 'gt', 'gt.txt'
@@ -114,8 +116,10 @@ class Mot15SceneDataset(BaseSceneDataset):
                 box2d = Box2D([left, top, left+width, top+height], calibration=self.calibration, ID=data[1])
                 if np.any(np.array(data[8:11]) != -1):
                     pos_3d = Position(data[8:11], reference=origin)
+                    self.has_3d = True
                 else:
                     pos_3d = None
+                    self.has_3d = False
                 obj_state = ObjectState(obj_type="pedestrian", ID=data[1])
                 obj_state.set(
                     t=self.get_timestamp(data[0]),
