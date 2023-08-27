@@ -7,8 +7,8 @@ from datetime import datetime
 
 import numpy as np
 from avstack import calibration
-from avstack.geometry import GlobalOrigin3D, Box2D, Position
 from avstack.environment.objects import ObjectState
+from avstack.geometry import Box2D, GlobalOrigin3D, Position
 from cv2 import imread
 from tqdm import tqdm
 
@@ -34,7 +34,12 @@ class MOT15SceneManager(BaseSceneManager):
             ]
         )
         self.splits_scenes = None  # use the different splits instead
-        self.scenes_with_3d = ["ETH-Bahnhof", "ETH-Sunnyday", "PETS09-S2L1", "TUD-Stadtmitte"]
+        self.scenes_with_3d = [
+            "ETH-Bahnhof",
+            "ETH-Sunnyday",
+            "PETS09-S2L1",
+            "TUD-Stadtmitte",
+        ]
 
     def get_scene_dataset_by_name(self, scene):
         return Mot15SceneDataset(self.data_dir, self.split, scene)
@@ -104,16 +109,20 @@ class Mot15SceneDataset(BaseSceneDataset):
         self.has_3d = False
         if self.split != "test":
             gt_path = os.path.join(
-                self.data_dir, self.split, self.scene, 'gt', 'gt.txt'
+                self.data_dir, self.split, self.scene, "gt", "gt.txt"
             )
-            with open(gt_path, 'r') as f:
+            with open(gt_path, "r") as f:
                 gt_lines = [line.strip() for line in f.readlines()]
             self.gt_dict = {frame: [] for frame in self.frames}
             for line in gt_lines:
-                data = [float(item) for item in line.split(',')]
+                data = [float(item) for item in line.split(",")]
                 left, top, width, height = data[2:6]
                 conf = data[7]
-                box2d = Box2D([left, top, left+width, top+height], calibration=self.calibration, ID=data[1])
+                box2d = Box2D(
+                    [left, top, left + width, top + height],
+                    calibration=self.calibration,
+                    ID=data[1],
+                )
                 if np.any(np.array(data[8:11]) != -1):
                     pos_3d = Position(data[8:11], reference=origin)
                     self.has_3d = True

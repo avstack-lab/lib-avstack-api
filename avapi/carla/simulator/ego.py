@@ -15,7 +15,16 @@ import numpy as np
 from avstack import GroundTruthInformation
 from avstack.datastructs import DataManager
 from avstack.environment import EnvironmentState
-from avstack.geometry import NominalOriginStandard, Rotation, Transform, Translation
+from avstack.geometry import (
+    Acceleration,
+    AngularVelocity,
+    Attitude,
+    GlobalOrigin3D,
+    Pose,
+    Position,
+    ReferenceFrame,
+    Velocity,
+)
 from avstack.geometry import transformations as tforms
 from avstack.modules.perception import detections
 from carla import Location, VehicleControl
@@ -38,6 +47,10 @@ class CarlaEgoActor:
 
         self.t0 = None
         self.frame0 = None
+        e_pose = self.get_ego_pose()
+        self.reference = ReferenceFrame(
+            e_pose.position.x, e_pose.attitude.q, GlobalOrigin3D
+        )
 
     def _spawn_actor(self):
         # -- vehicle blueprint
@@ -162,16 +175,14 @@ class CarlaEgoActor:
             raise e
         self.initialize(t0, frame0)
 
-    def get_ego_transform(self):
+    def get_ego_pose(self):
         tf = self.actor.get_transform()
         q = tforms.transform_orientation(
             utils.carla_rotation_to_RPY(tf.rotation), "euler", "quat"
         )
-        loc = Translation(
-            [tf.location.x, -tf.location.y, tf.location.z], NominalOriginStandard
-        )
-        rot = Rotation(q, NominalOriginStandard)
-        return Transform(rot, loc)
+        pos = Position([tf.location.x, -tf.location.y, tf.location.z], GlobalOrigin3D)
+        att = Attitude(q, GlobalOrigin3D)
+        return Pose(pos, att)
 
     def get_vehicle_data_from_actor(self, t):
         try:
@@ -202,7 +213,7 @@ class CarlaEgoActor:
 
     def get_lane_lines(self, debug=False):
         """Gets lane lines in local coordinates of ego"""
-        T_g2l = self.get_ego_transform()
+        pose_g2l = self.get_ego_pose()
         wpt_init = self.map.get_waypoint(
             self.actor.get_location(), project_to_road=True
         )
@@ -213,31 +224,26 @@ class CarlaEgoActor:
         else:
             wpts_local = [
                 [
-                    T_g2l
-                    @ Translation(
+                    Position(
                         utils.carla_location_to_numpy_vector(wpt.transform.location),
-                        NominalOriginStandard,
-                    ),
+                        GlobalOrigin3D,
+                    ).change_reference(self.reference, inplace=False),
                     wpt.lane_width,
                 ]
                 for wpt in wpts
             ]
             pts_left = [
-                Translation(
-                    [wpt.x, wpt.y + lane_width / 2, wpt.z], NominalOriginStandard
-                )
+                Position([wpt[0], wpt[1] + lane_width / 2, wpt[2]], GlobalOrigin3D)
                 for wpt, lane_width in wpts_local
             ]
             pts_right = [
-                Translation(
-                    [wpt.x, wpt.y - lane_width / 2, wpt.z], NominalOriginStandard
-                )
+                Position([wpt[0], wpt[1] - lane_width / 2, wpt[2]], GlobalOrigin3D)
                 for wpt, lane_width in wpts_local
             ]
             lane_left = detections.LaneLineInSpace(pts_left)
             lane_right = detections.LaneLineInSpace(pts_right)
             if debug:
-                T_l2g = T_g2l.T
+                T_l2g = pose_g2l.matrix
                 for i in range(len(wpts) - 1):
                     # draw center
                     self.debug.draw_line(

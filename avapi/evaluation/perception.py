@@ -4,8 +4,8 @@
 # @Last Modified by:   spencer@primus
 # @Last Modified time: 2022-09-09
 
-import os
 import json
+import os
 
 import numpy as np
 from avstack.geometry import bbox
@@ -89,7 +89,7 @@ class PercepResultsAnalyzer(ResultAnalyzer):
 
         # Get detections
         det_file_path = os.path.join(result_path, "%06i.txt" % idx)
-        with open(det_file_path, 'rb') as f:
+        with open(det_file_path, "rb") as f:
             detections = json.load(f, cls=DetectionDecoder)
         dets = [det for det in detections if isinstance(det, (BoxDetection,))]
         metric = (

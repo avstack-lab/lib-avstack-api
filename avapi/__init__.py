@@ -12,8 +12,8 @@ import avapi.carla
 import avapi.evaluation
 import avapi.kitti
 import avapi.mot15
-import avapi.nuscenes
 import avapi.nuimages
+import avapi.nuscenes
 import avapi.opv2v
 import avapi.visualize
 

@@ -155,7 +155,9 @@ def show_image_with_boxes(
             bl_edge = (box.xmin, box.ymin)
             add_ID_to_image(img1, bl_edge, ID, fontscale=fontscale)
         elif isinstance(box, (Box3D, BasicBoxTrack3D)) or (
-            isinstance(box, (VehicleState, BoxDetection, MaskDetection)) and isinstance(box.box, Box3D)):
+            isinstance(box, (VehicleState, BoxDetection, MaskDetection))
+            and isinstance(box.box, Box3D)
+        ):
             if isinstance(box, (VehicleState, BasicBoxTrack3D)):
                 box = box.box
             elif isinstance(box, (BoxDetection, MaskDetection)):

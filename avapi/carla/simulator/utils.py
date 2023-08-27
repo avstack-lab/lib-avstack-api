@@ -14,10 +14,12 @@ import carla
 import numpy as np
 from avstack.environment.objects import VehicleState
 from avstack.geometry import (
-    NominalOriginStandard,
-    Rotation,
-    Translation,
-    VectorDirMag,
+    Acceleration,
+    AngularVelocity,
+    Attitude,
+    GlobalOrigin3D,
+    Position,
+    Velocity,
     bbox,
 )
 from avstack.geometry import transformations as tforms
@@ -45,7 +47,7 @@ def get_obj_type_from_actor(actor):
         obj_type = "pedestrian"
         raise NotImplementedError(obj_type)
     else:
-        raise NotImplementedError(actors.type_id)
+        raise NotImplementedError(actor.type_id)
     return obj_type
 
 
@@ -58,22 +60,18 @@ def wrap_actor_to_vehicle_state(t, actor):
     tf = actor.get_transform()
     v = actor.get_velocity()
     ac = actor.get_acceleration()
-    pos = Translation(
-        [tf.location.x, -tf.location.y, tf.location.z], NominalOriginStandard
+    pos = Position([tf.location.x, -tf.location.y, tf.location.z], GlobalOrigin3D)
+    vel = Velocity([v.x, -v.y, v.z], GlobalOrigin3D)
+    acc = Acceleration([ac.x, -ac.y, ac.z], GlobalOrigin3D)
+    att = Attitude(
+        tforms.transform_orientation(
+            carla_rotation_to_RPY(tf.rotation), "euler", "quat"
+        ),
+        GlobalOrigin3D,
     )
-    vel = VectorDirMag([v.x, -v.y, v.z], NominalOriginStandard)
-    acc = VectorDirMag([ac.x, -ac.y, ac.z], NominalOriginStandard)
-    q_OR_to_obj = tforms.transform_orientation(
-        carla_rotation_to_RPY(tf.rotation), "euler", "quat"
-    )
-    # q_OR_to_obj = tforms.transform_orientation(carla_rotation_to_RPY(tf.rotation), 'euler', 'quat').conjugate()
-
     av = actor.get_angular_velocity()
-    ang = VectorDirMag([av.x, -av.y, av.z], NominalOriginStandard)
-    box = bbox.Box3D(
-        [h, w, l, pos.vector, q_OR_to_obj], NominalOriginStandard, where_is_t="bottom"
-    )
-    att = Rotation(box.q, NominalOriginStandard)
+    ang = AngularVelocity(np.quaternion(av.x, -av.y, av.z), GlobalOrigin3D)
+    box = bbox.Box3D(pos, att, [h, w, l], where_is_t="bottom")
     VS.set(t, pos, box, vel, acc, att, ang)
     return VS
 

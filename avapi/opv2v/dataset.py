@@ -38,9 +38,11 @@ class Opv2vScenesManager(BaseSceneManager):
         """
         data_dir: the base folder where all scenes are kept
         """
-        raise NotImplementedError('The OPV2V scene manager will not work'
-                    ' until someone updates it to the latest AVstack'
-                    ' geometry format.')
+        raise NotImplementedError(
+            "The OPV2V scene manager will not work"
+            " until someone updates it to the latest AVstack"
+            " geometry format."
+        )
         if not os.path.exists(data_dir):
             raise RuntimeError(f"Cannot find data dir at {data_dir}")
         self.split = "train"
@@ -89,9 +91,11 @@ class Opv2vSceneDataset(BaseSceneDataset):
         whitelist_types=_nominal_whitelist_types,
         ignore_types=_nominal_ignore_types,
     ):
-        raise NotImplementedError('The OPV2V scene manager will not work'
-            ' until someone updates it to the latest AVstack'
-            ' geometry format.')
+        raise NotImplementedError(
+            "The OPV2V scene manager will not work"
+            " until someone updates it to the latest AVstack"
+            " geometry format."
+        )
         self.data_dir = data_dir
         self.scene = scene_idx
         self.agent = agent_idx

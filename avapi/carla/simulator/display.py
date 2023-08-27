@@ -36,7 +36,7 @@ import carla
 import numpy as np
 import pygame
 from avstack import calibration
-from avstack.geometry import Origin, bbox
+from avstack.geometry import GlobalOrigin3D, ReferenceFrame, bbox
 from carla import ColorConverter as cc
 from pygame.locals import (
     K_0,
@@ -158,7 +158,7 @@ class CameraDisplayManager(object):
             item.append(bp)
         self.set_sensor(self.index, self.sensor_view, force_respawn=True)
 
-    def add_camera(self, name, P, tform, attachment):
+    def add_camera(self, name, parent, P, tform, attachment):
         if name not in self._camera_transforms:
             self._camera_transforms[name] = []
             self._camera_Ps[name] = []
@@ -167,9 +167,9 @@ class CameraDisplayManager(object):
         self._camera_Ps[name].append(P)
         q = utils.carla_rotation_to_quaternion(tform.rotation)
         x = utils.carla_location_to_numpy_vector(tform.location)
-        origin = Origin(x, q)
+        reference = ReferenceFrame(x, q, reference=self._parent.reference)
         img_shape = (2 * P[1, 2], 2 * P[0, 2])
-        cam_calib = calibration.CameraCalibration(origin, P, img_shape)
+        cam_calib = calibration.CameraCalibration(reference, P, img_shape)
         self._camera_bbox[name].append(
             bbox.Box2D([0, 0, img_shape[0], img_shape[1]], cam_calib)
         )
@@ -185,12 +185,14 @@ class CameraDisplayManager(object):
 
         self.add_camera(
             "hud",
+            self._parent,
             camera_P,
             carla.Transform(carla.Location(x=-8.5, z=3.5)),
             carla.AttachmentType.Rigid,
         )
         self.add_camera(
             "hud",
+            self._parent,
             camera_P,
             carla.Transform(carla.Location(z=15), carla.Rotation(pitch=-90)),
             carla.AttachmentType.Rigid,
@@ -202,7 +204,7 @@ class CameraDisplayManager(object):
             if "camera" in name:
                 P = sensor.P
                 T = sensor.tform_to_parent
-                self.add_camera(name, P, T, carla.AttachmentType.Rigid)
+                self.add_camera(name, self._parent, P, T, carla.AttachmentType.Rigid)
 
     def tick(self, world, ego, clock):
         self.hud.tick(world, ego, clock)

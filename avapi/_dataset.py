@@ -146,7 +146,9 @@ class BaseSceneDataset:
         ts = self.get_timestamp(frame, sensor)
         data = self._load_image(frame, sensor=sensor)
         cam_string = "image-%i" % sensor if isinstance(sensor, int) else sensor
-        cam_string = cam_string if sensor is not None else self.get_sensor_name("main_camera")
+        cam_string = (
+            cam_string if sensor is not None else self.get_sensor_name("main_camera")
+        )
         calib = self.get_calibration(frame, cam_string)
         return sensors.ImageData(
             ts, frame, data, calib, self.get_sensor_ID(cam_string), channel_order="rgb"

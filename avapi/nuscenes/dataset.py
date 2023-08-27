@@ -49,7 +49,7 @@ class nuScenesManager(_nuManager):
         self.scene_name_to_index = {}
         self.scene_number_to_index = {}
         self.index_to_scene = {}
-        self.scenes = [sc['name'] for sc in nusc.scene]
+        self.scenes = [sc["name"] for sc in nusc.scene]
         for i, sc in enumerate(nusc.scene):
             self.scene_name_to_index[sc["name"]] = i
             self.scene_number_to_index[int(sc["name"].replace("scene-", ""))] = i

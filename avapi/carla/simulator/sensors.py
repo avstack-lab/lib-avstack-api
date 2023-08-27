@@ -17,7 +17,7 @@ import avstack.sensors
 import carla
 import numpy as np
 from avstack.calibration import Calibration, CameraCalibration
-from avstack.geometry import Origin, q_stan_to_cam
+from avstack.geometry import Attitude, Position, ReferenceFrame, q_stan_to_cam
 from avstack.geometry import transformations as tforms
 from carla import ColorConverter as cc
 
@@ -85,12 +85,12 @@ class Sensor:
         except KeyError as e:
             # -- not a camera!
             self.P = None
-        self.origin = Origin(x, q_c)
+        self.reference = ReferenceFrame(x, q_c, self.parent.reference)
         if self.P is None:
-            self.calibration = Calibration(self.origin)
+            self.calibration = Calibration(self.reference)
         else:
             imsize = (h, w)
-            self.calibration = CameraCalibration(self.origin, self.P, imsize)
+            self.calibration = CameraCalibration(self.reference, self.P, imsize)
 
         # -- spawn from blueprint
         self.attr = attr
@@ -172,7 +172,7 @@ class GnssSensor(Sensor):
         v_enu = np.squeeze(np.array([ned[1], ned[0], -ned[2]]))
         v_enu = v_enu + b + r * np.random.randn(3)
         enu = {"z": v_enu, "R": R}
-        self._make_data_class(gnss.timestamp, gnss.frame, enu, levar=self.origin.x)
+        self._make_data_class(gnss.timestamp, gnss.frame, enu, levar=self.reference.x)
 
 
 class ImuSensor(Sensor):

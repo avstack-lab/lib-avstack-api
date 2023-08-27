@@ -18,12 +18,12 @@ from avstack import calibration
 from avstack.environment.objects import VehicleState
 from avstack.geometry import (
     Attitude,
+    Box3D,
     GlobalOrigin3D,
     Position,
     ReferenceFrame,
     Rotation,
     Vector,
-    Box3D,
     q_mult_vec,
     q_stan_to_cam,
 )
@@ -169,12 +169,7 @@ class KittiObjectDataset(BaseSceneDataset):
         pos = Position(np.zeros((3,)), reference)
         rot = Attitude(np.quaternion(1), reference)
         box = Box3D(pos, rot, [h, w, l], where_is_t="bottom")
-        ego.set(
-            t=self.get_timestamp(frame),
-            position=pos,
-            box=box,
-            attitude=rot
-        )
+        ego.set(t=self.get_timestamp(frame), position=pos, box=box, attitude=rot)
         return ego
 
     @classmethod
