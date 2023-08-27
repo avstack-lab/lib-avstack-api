@@ -82,13 +82,18 @@ class CarlaManager:
         snap = self._world.get_snapshot()
         self.frame = snap.frame - self.frame0
         self.t_elapsed = snap.timestamp.elapsed_seconds - self.t0
+        ground_truth = self.ego.get_ground_truth(self.t_elapsed, self.frame)
         events = self._npc_manager.retrieve(self.t_elapsed)
         self._npc_manager.apply(events)
         self.infrastructure.tick()
-        done = self.ego.tick(self.t_elapsed, self.frame, self.infrastructure)
+        done, ego_debug = self.ego.tick(self.t_elapsed, self.frame, self.infrastructure)
         if self.recorder is not None:
             self.recorder.record(self.t_elapsed, self.frame, self.ego, self.npcs)
-        return done
+        debug = {
+            "ego": ego_debug,
+            "ground_truth": {"objects": {"gt_3d": ground_truth.objects}},
+        }
+        return done, debug
 
     def _print_last_record_path(self):
         if self.recorder is not None:

@@ -296,7 +296,7 @@ class CarlaEgoActor:
     def tick(self, t_elapsed, frame, infrastructure=None):
         # -- apply algorithms
         ground_truth = self.get_ground_truth(t_elapsed, frame)
-        ctrl = self.algorithms.tick(
+        ctrl, alg_debug = self.algorithms.tick(
             frame,
             t_elapsed,
             self.sensor_data_manager,
@@ -307,6 +307,7 @@ class CarlaEgoActor:
             self.apply_control(ctrl)
 
         # -- check if we need to set new destination
+        done = False
         if self.destination is not None:
             d_dest = ground_truth.ego_state.position.distance(self.destination)
             if (self.destination is not None) and d_dest < 20:
@@ -320,8 +321,11 @@ class CarlaEgoActor:
                     )
                     self.destination = dest_true
                 else:
-                    return True
-        return False
+                    done = True
+        debug = {
+            "algorithms": alg_debug,
+        }
+        return done, debug
 
     def random_spawn(self):
         return np.random.choice(self.spawn_points)

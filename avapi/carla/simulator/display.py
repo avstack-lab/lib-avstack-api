@@ -37,6 +37,7 @@ import numpy as np
 import pygame
 from avstack import calibration
 from avstack.geometry import ReferenceFrame, bbox
+from avstack.sensors import ImageData
 from carla import ColorConverter as cc
 from pygame.locals import (
     K_0,
@@ -78,6 +79,7 @@ from pygame.locals import (
 )
 
 from avapi.carla.simulator import utils
+from avapi.visualize.snapshot import show_image_with_boxes
 
 
 # ==============================================================================
@@ -112,14 +114,22 @@ class CameraDisplayManager(object):
         self.surface = None
         self.sensor = None
         self.objects = {}
-        self.object_representations = ["object_3d", "object_2d", "track_3d", "off"]
-        self.representation_colors = {
-            "object_3d": (0, 0, 255),
-            "object_2d": (0, 255, 0),
-            "track_3d": (255, 255, 255),
+        self.object_representations = [
+            "off",
+            "gt_3d",  # "gt_2d" follows from "gt_3d"
+            "object_3d",
+            "object_2d",
+            "track_2d",
+            "track_3d",
+        ]
+        self.object_representation_colors = {
+            "gt_3d": (0, 0, 0),
+            "gt_2d": (124, 0, 0),
+            "objects_3d": (0, 0, 255),
+            "objects_2d": (0, 255, 0),
+            "tracks_2d": (124, 124, 124),
+            "tracks_3d": (255, 255, 255),
         }
-        self.idx_representation = 2 - 1
-        self.toggle_obj_representation()
         self.R_UE2C = np.array([[0, 1, 0], [0, 0, -1], [1, 0, 0]]).T
         bound_y = 0.5 + self._parent.actor.bounding_box.extent.y
 
@@ -127,6 +137,7 @@ class CameraDisplayManager(object):
         self._camera_transforms = {}
         self._camera_Ps = {}
         self._camera_bbox = {}
+        self._camera_calibrations = {}
         self.camera_classes = []
         self.n_camera_views = {}
         self.camera_types = [["sensor.camera.rgb", cc.Raw, "Camera RGB", {}]]
@@ -137,6 +148,10 @@ class CameraDisplayManager(object):
         self.camera_class_index = 0
         self.camera_type_index = 0
         self.camera_view_index = 0
+
+        self.object_representation_index = 0
+        self.object_camera_class_index = 0
+
         self.set_cameras()
 
     @property
@@ -146,6 +161,14 @@ class CameraDisplayManager(object):
     @property
     def camera_type_name(self):
         return self.camera_types[self.camera_type_index][2]
+
+    @property
+    def object_representation_name(self):
+        return self.available_object_representations[self.object_representation_index]
+
+    @property
+    def object_camera_class_name(self):
+        return self.camera_classes[self.object_camera_class_index]
 
     @property
     def camera_class_index(self):
@@ -170,6 +193,45 @@ class CameraDisplayManager(object):
     @camera_view_index.setter
     def camera_view_index(self, index):
         self._camera_view_index = index % self.n_camera_views[self.camera_class_name]
+
+    @property
+    def object_representation_index(self):
+        return self._object_representation_index
+
+    @object_representation_index.setter
+    def object_representation_index(self, index):
+        if index == 0:
+            self._object_representation_index = index
+        else:
+            self._object_representation_index = index % len(
+                self.available_object_representations
+            )
+
+    @property
+    def object_camera_class_index(self):
+        return self._object_camera_class_index
+
+    @object_camera_class_index.setter
+    def object_camera_class_index(self, index):
+        self._object_camera_class_index = index % len(self.camera_classes)
+
+    @property
+    def available_object_representations(self):
+        try:
+            reprs = ["off"] + [
+                rep
+                for rep in self.object_representations
+                if (rep != "off")
+                and (
+                    self.objects[self.object_camera_class_name].get(rep, None)
+                    is not None
+                )
+            ]
+            if "gt_3d" in reprs:
+                reprs.insert(reprs.index("gt_3d") + 1, "gt_2d")
+        except KeyError as e:
+            reprs = ["off"]
+        return reprs
 
     def print_init(self):
         print(
@@ -210,6 +272,7 @@ class CameraDisplayManager(object):
             self._camera_transforms[camera_class_name] = []
             self._camera_Ps[camera_class_name] = []
             self._camera_bbox[camera_class_name] = []
+            self._camera_calibrations[camera_class_name] = []
         self.n_camera_views[camera_class_name] += 1
         self._camera_transforms[camera_class_name].append((tform, attachment))
         self._camera_Ps[camera_class_name].append(P)
@@ -218,6 +281,7 @@ class CameraDisplayManager(object):
         reference = ReferenceFrame(x, q, reference=self._parent.reference)
         img_shape = (2 * P[1, 2], 2 * P[0, 2])
         cam_calib = calibration.CameraCalibration(reference, P, img_shape)
+        self._camera_calibrations[camera_class_name].append(cam_calib)
         self._camera_bbox[camera_class_name].append(
             bbox.Box2D([0, 0, img_shape[0], img_shape[1]], cam_calib)
         )
@@ -254,8 +318,10 @@ class CameraDisplayManager(object):
                 T = sensor.tform_to_parent
                 self.add_camera("ego", P, T, carla.AttachmentType.Rigid)
 
-    def tick(self, world, ego, clock):
-        self.hud.tick(world, ego, clock)
+    def tick(self, world, ego, clock, debug):
+        self.set_objects("hud", debug["ground_truth"]["objects"])
+        self.set_objects("ego", debug["ego"]["algorithms"]["objects"])
+        self.hud.tick(world, ego, clock, debug)
 
     def destroy(self):
         if self.sensor is not None:
@@ -341,29 +407,76 @@ class CameraDisplayManager(object):
         self.recording = not self.recording
         self.hud.notification("Recording %s" % ("On" if self.recording else "Off"))
 
-    def set_objects(self, objects, tracks):
-        self._set_objects("object_2d", objects.get("object_2d", []))
-        self._set_objects("object_3d", objects.get("object_3d", []))
-        self._set_objects("track_3d", tracks)
+    def set_objects(self, ref, objects):
+        self._set_objects(ref, "gt_3d", objects.get("gt_3d", None))
+        self._set_objects(ref, "objects_2d", objects.get("objects_2d", None))
+        self._set_objects(ref, "objects_3d", objects.get("objects_3d", None))
+        self._set_objects(ref, "tracks_2d", objects.get("tracks_2d", None))
+        self._set_objects(ref, "tracks_3d", objects.get("tracks_3d", None))
 
-    def _set_objects(self, key, objs):
-        self.objects[key] = objs
+    def _set_objects(self, ref, key, objs):
+        if ref not in self.objects:
+            self.objects[ref] = {}
+        self.objects[ref][key] = objs
 
-    def toggle_obj_representation(self):
-        self.idx_representation = (self.idx_representation + 1) % len(
-            self.object_representations
-        )
+    def toggle_object_representation(self):
+        self.object_representation_index += 1
         print(
-            f"Representation set as: {self.object_representations[self.idx_representation]}"
+            f"\n\nRepresentation set as: {self.object_representation_name} from choices {self.available_object_representations}\n"
         )
 
     def add_objects_to_image(self, img):
-        # TODO: this is not quite right but almost works...
+        # pull off values in case of changes
+        repr_name = self.object_representation_name
+        cam_class_name = self.camera_class_name
+        obj_cam_class_name = self.object_camera_class_name
+
         img1 = img.astype(np.uint8).copy()
-        representation = self.object_representations[self.idx_representation]
-        if (representation in self.objects) and (representation != "off"):
-            for obj in self.objects[representation]:
+        if repr_name != "off":
+            # Pull off objects
+            if repr_name == "gt_2d":
+                objects = [
+                    obj.box3d.project_to_2d_bbox(
+                        self._camera_calibrations[cam_class_name][
+                            self.camera_view_index
+                        ]
+                    )
+                    for obj in self.objects[obj_cam_class_name]["gt_3d"]
+                ]
+            else:
+                objects = self.objects[obj_cam_class_name][repr_name]
+
+            # 3D can always be shown
+            if "3d" in repr_name:
                 pass
+            # 2D can only be shown in the same camera
+            elif "2d" in repr_name:
+                if repr_name == "gt_2d":
+                    # can always convert gt 3d to the viewing camera
+                    pass
+                else:
+                    objects = self.objects[repr_name]
+            else:
+                raise NotImplementedError(repr_name)
+
+            # Augment the image with the representations
+            img_data = ImageData(
+                timestamp=0,
+                frame=0,
+                data=img1,
+                calibration=self._camera_calibrations[cam_class_name][
+                    self.camera_view_index
+                ],
+                source_ID=self.camera_view_index,
+            )
+            img1 = show_image_with_boxes(
+                img=img_data,
+                boxes=objects,
+                box_colors=self.object_representation_colors[repr_name],
+                show=False,
+                return_images=True,
+                show_IDs=True,
+            )
         return img1
 
     @staticmethod
@@ -411,8 +524,9 @@ class CameraDisplayManager(object):
             array = np.frombuffer(image.raw_data, dtype=np.dtype("uint8"))
             array = np.reshape(array, (image.height, image.width, 4))
             array = array[:, :, :3]
-            array = array[:, :, ::-1]
             # --- add object boxes
+            if self.object_representation_name == "off":
+                array = array[:, :, ::-1]  # HACK for now
             array = self.add_objects_to_image(array)
             self.surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
         if self.recording:
@@ -434,7 +548,7 @@ class KeyboardControl(object):
                 if self._is_quit_shortcut(event.key):
                     return True
                 elif event.key == K_r:
-                    self._display_manager.toggle_obj_representation()
+                    self._display_manager.toggle_object_representation()
                 elif event.key == K_v:
                     self._display_manager.toggle_camera_view()
                 elif event.key == K_s:
@@ -492,7 +606,7 @@ class HUD(object):
         self.simulation_time_elapsed += timestamp.elapsed_seconds - self.simulation_time
         self.simulation_time = timestamp.elapsed_seconds
 
-    def tick(self, world, ego, clock):
+    def tick(self, world, ego, clock, debug):
         self._notifications.tick(world, clock)
         if not self._show_info:
             return
