@@ -6,12 +6,12 @@
 # @Description: Utilities for carla applications
 
 """
-Welcome to the Heads Up Display HELP for lib-carcar
+Welcome to the Heads Up Display HELP for AVstack
 
 Use Keys to toggle modes:
     
-    V          : disabled...toggle view of the HUD camera, if HUD selected
-    S          : disabled...toggle the sensor used for viewing
+    V          : toggle index of the camera type for viewing within the category
+    S          : toggle the type of cameras used for viewing (e.g., hud, ego, infrastructure)
     R          : change the representation of objects on the screen
     SHIFT + M  : enter manual control mode
     SHIFT + A  : enter autopilot control mode
@@ -36,7 +36,7 @@ import carla
 import numpy as np
 import pygame
 from avstack import calibration
-from avstack.geometry import GlobalOrigin3D, ReferenceFrame, bbox
+from avstack.geometry import ReferenceFrame, bbox
 from carla import ColorConverter as cc
 from pygame.locals import (
     K_0,
@@ -124,23 +124,68 @@ class CameraDisplayManager(object):
         bound_y = 0.5 + self._parent.actor.bounding_box.extent.y
 
         # -- set the allowable cameras
-        self.sensor_view = "hud"  # TODO: allow for changing this index
         self._camera_transforms = {}
         self._camera_Ps = {}
         self._camera_bbox = {}
-
-        self.add_hud_camera()
-        self.add_ego_cameras()
+        self.camera_classes = []
+        self.n_camera_views = {}
+        self.camera_types = [["sensor.camera.rgb", cc.Raw, "Camera RGB", {}]]
 
         # -- save the sensor type to be used
-        self.transform_index = 0
-        self.index = 0
-        self.sensors = [["sensor.camera.rgb", cc.Raw, "Camera RGB", {}]]
+        self.add_hud_cameras()
+        self.add_ego_cameras()
+        self.camera_class_index = 0
+        self.camera_type_index = 0
+        self.camera_view_index = 0
         self.set_cameras()
+
+    @property
+    def camera_class_name(self):
+        return self.camera_classes[self.camera_class_index]
+
+    @property
+    def camera_type_name(self):
+        return self.camera_types[self.camera_type_index][2]
+
+    @property
+    def camera_class_index(self):
+        return self._camera_class_index
+
+    @camera_class_index.setter
+    def camera_class_index(self, index):
+        self._camera_class_index = index % len(self.camera_classes)
+
+    @property
+    def camera_type_index(self):
+        return self._camera_type_index
+
+    @camera_type_index.setter
+    def camera_type_index(self, index):
+        self._camera_type_index = index % len(self.camera_types)
+
+    @property
+    def camera_view_index(self):
+        return self._camera_view_index
+
+    @camera_view_index.setter
+    def camera_view_index(self, index):
+        self._camera_view_index = index % self.n_camera_views[self.camera_class_name]
+
+    def print_init(self):
+        print(
+            "\nDisplay Manager ready with the following view classes and sensors:\n{}".format(
+                "\n".join(
+                    "  {} - {} sensors".format(
+                        dtype, len(self._camera_transforms[dtype])
+                    )
+                    for dtype in self.camera_classes
+                )
+            )
+        )
 
     def set_cameras(self):
         bp_library = self._parent.actor.get_world().get_blueprint_library()
-        for item in self.sensors:
+        for item in self.camera_types:
             bp = bp_library.find(item[0])
             if item[0].startswith("sensor.camera"):
                 bp.set_attribute("image_size_x", str(self.hud.dim[0]))
@@ -156,25 +201,28 @@ class CameraDisplayManager(object):
                     if attr_name == "range":
                         self.lidar_range = float(attr_value)
             item.append(bp)
-        self.set_sensor(self.index, self.sensor_view, force_respawn=True)
+        self.set_sensor(force_respawn=True)
 
-    def add_camera(self, name, parent, P, tform, attachment):
-        if name not in self._camera_transforms:
-            self._camera_transforms[name] = []
-            self._camera_Ps[name] = []
-            self._camera_bbox[name] = []
-        self._camera_transforms[name].append((tform, attachment))
-        self._camera_Ps[name].append(P)
+    def add_camera(self, camera_class_name, P, tform, attachment):
+        if camera_class_name not in self.camera_classes:
+            self.camera_classes.append(camera_class_name)
+            self.n_camera_views[camera_class_name] = 0
+            self._camera_transforms[camera_class_name] = []
+            self._camera_Ps[camera_class_name] = []
+            self._camera_bbox[camera_class_name] = []
+        self.n_camera_views[camera_class_name] += 1
+        self._camera_transforms[camera_class_name].append((tform, attachment))
+        self._camera_Ps[camera_class_name].append(P)
         q = utils.carla_rotation_to_quaternion(tform.rotation)
         x = utils.carla_location_to_numpy_vector(tform.location)
         reference = ReferenceFrame(x, q, reference=self._parent.reference)
         img_shape = (2 * P[1, 2], 2 * P[0, 2])
         cam_calib = calibration.CameraCalibration(reference, P, img_shape)
-        self._camera_bbox[name].append(
+        self._camera_bbox[camera_class_name].append(
             bbox.Box2D([0, 0, img_shape[0], img_shape[1]], cam_calib)
         )
 
-    def add_hud_camera(self):
+    def add_hud_cameras(self):
         """Add the HUD camera to the allowable views"""
         # Make the camera transformation matrix relative to center of car
         w = self.hud.dim[0]
@@ -183,16 +231,16 @@ class CameraDisplayManager(object):
         f = w / (2 * np.tan(fov * math.pi / 360.0))
         camera_P = np.array([[f, 0, w / 2.0, 0], [0, f, h / 2.0, 0], [0, 0, 1, 0]])
 
+        # front-view camera
         self.add_camera(
             "hud",
-            self._parent,
             camera_P,
             carla.Transform(carla.Location(x=-8.5, z=3.5)),
             carla.AttachmentType.Rigid,
         )
+        # bev camera
         self.add_camera(
             "hud",
-            self._parent,
             camera_P,
             carla.Transform(carla.Location(z=15), carla.Rotation(pitch=-90)),
             carla.AttachmentType.Rigid,
@@ -204,7 +252,7 @@ class CameraDisplayManager(object):
             if "camera" in name:
                 P = sensor.P
                 T = sensor.tform_to_parent
-                self.add_camera(name, self._parent, P, T, carla.AttachmentType.Rigid)
+                self.add_camera("ego", P, T, carla.AttachmentType.Rigid)
 
     def tick(self, world, ego, clock):
         self.hud.tick(world, ego, clock)
@@ -230,21 +278,33 @@ class CameraDisplayManager(object):
         self.hud.render(self.pg_display)
         pygame.display.flip()
 
-    def toggle_view(self):
-        self.transform_index = (self.transform_index + 1) % len(
-            self._camera_transforms[self.sensor_view]
-        )
+    def toggle_camera_view(self):
+        """Swap between cameras within a class of views"""
+        self.camera_view_index += 1
         self.set_sensor(
-            self.index, name=self.sensor_view, notify=False, force_respawn=True
+            notify=False,
+            force_respawn=True,
         )
 
-    def set_sensor(self, index, name="hud", notify=True, force_respawn=False):
-        index = index % len(self.sensors)
+    def toggle_camera_class(self):
+        """Swap the class of views"""
+        dti_init = self.camera_class_index
+        self.camera_class_index += 1
+        if self.camera_class_index != dti_init:
+            self.camera_view_index = -1
+            self.toggle_camera_view()
+
+    def toggle_camera_type(self):
+        """Swap the type of camera used"""
+        raise NotImplementedError
+
+    def set_sensor(self, notify=True, force_respawn=False):
         needs_respawn = (
             True
-            if self.index is None
+            if self.camera_type_index is None
             else (
-                force_respawn or (self.sensors[index][2] != self.sensors[self.index][2])
+                force_respawn
+                #   or (self.sensors[type_index][2] != self.sensors[self.camera_type_index][2])
             )
         )
         if needs_respawn:
@@ -252,10 +312,14 @@ class CameraDisplayManager(object):
                 self.sensor.destroy()
                 self.surface = None
             self.sensor = self._parent.actor.get_world().spawn_actor(
-                self.sensors[index][-1],
-                self._camera_transforms[name][self.transform_index][0],
+                self.camera_types[self.camera_type_index][-1],
+                self._camera_transforms[self.camera_class_name][self.camera_view_index][
+                    0
+                ],
                 attach_to=self._parent.actor,
-                attachment_type=self._camera_transforms[name][self.transform_index][1],
+                attachment_type=self._camera_transforms[self.camera_class_name][
+                    self.camera_view_index
+                ][1],
             )
             # We need to pass the lambda a weak reference to self to avoid
             # circular reference.
@@ -264,11 +328,14 @@ class CameraDisplayManager(object):
                 lambda image: CameraDisplayManager._parse_image(weak_self, image)
             )
         if notify:
-            self.hud.notification(self.sensors[index][2])
-        self.index = index
+            notify_str = "Set display sensor to type {} of class {} #{}".format(
+                self.camera_type_name, self.camera_class_name, self.camera_view_index
+            )
+            self.hud.notification(notify_str)
 
     def next_sensor(self):
-        self.set_sensor(self.index + 1)
+        self.camera_view_index += 1
+        self.set_sensor(notify=True, force_respawn=False)
 
     def toggle_recording(self):
         self.recording = not self.recording
@@ -304,7 +371,7 @@ class CameraDisplayManager(object):
         self = weak_self()
         if not self:
             return
-        if self.sensors[self.index][0].startswith("sensor.lidar"):
+        if self.camera_types[self.camera_type_index][0].startswith("sensor.lidar"):
             points = np.frombuffer(image.raw_data, dtype=np.dtype("f4"))
             points = np.reshape(points, (int(points.shape[0] / 4), 4))
             lidar_data = np.array(points[:, :2])
@@ -317,7 +384,9 @@ class CameraDisplayManager(object):
             lidar_img = np.zeros((lidar_img_size), dtype=np.uint8)
             lidar_img[tuple(lidar_data.T)] = (255, 255, 255)
             self.surface = pygame.surfarray.make_surface(lidar_img)
-        elif self.sensors[self.index][0].startswith("sensor.camera.dvs"):
+        elif self.camera_types[self.camera_type_index][0].startswith(
+            "sensor.camera.dvs"
+        ):
             # Example of converting the raw_data from a carla.DVSEventArray
             # sensor into a NumPy array and using it as an image
             dvs_events = np.frombuffer(
@@ -338,7 +407,7 @@ class CameraDisplayManager(object):
             ] = 255
             self.surface = pygame.surfarray.make_surface(dvs_img.swapaxes(0, 1))
         else:
-            image.convert(self.sensors[self.index][1])
+            image.convert(self.camera_types[self.camera_type_index][1])
             array = np.frombuffer(image.raw_data, dtype=np.dtype("uint8"))
             array = np.reshape(array, (image.height, image.width, 4))
             array = array[:, :, :3]
@@ -367,9 +436,9 @@ class KeyboardControl(object):
                 elif event.key == K_r:
                     self._display_manager.toggle_obj_representation()
                 elif event.key == K_v:
-                    self._display_manager.toggle_view()
+                    self._display_manager.toggle_camera_view()
                 elif event.key == K_s:
-                    self._display_manager.toggle_sensor()
+                    self._display_manager.toggle_camera_class()
                 elif event.key == K_h or (
                     event.key == K_SLASH and pygame.key.get_mods() & KMOD_SHIFT
                 ):

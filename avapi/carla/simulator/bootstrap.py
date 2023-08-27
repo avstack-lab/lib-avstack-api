@@ -141,7 +141,7 @@ def bootstrap_display(world, ego, cfg=None, config_file="./default_display.yml")
             ego, pg_display, hud, gamma_correction=2.2
         )
         try:
-            display_manager.set_sensor(index=0, notify=False)
+            display_manager.set_sensor(notify=False)
             # -- keyboard controls
             keyboard_control = display.KeyboardControl(display_manager)
         except Exception as e:
