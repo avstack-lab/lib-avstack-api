@@ -49,7 +49,7 @@ def main(args, frame_start=4, frame_end_trim=4, n_frames_max=10000):
         process_func_sensors(CDM, 'ego', egos, objects_global, frames, args.data_dir, with_multi=args.multi)
 
         print('Putting objects into sensor frames')
-        for i_sens, (sens, frames) in enumerate(CDM.sensor_frames.items()):
+        for i_sens, (sens, frames) in enumerate(reversed(CDM.sensor_frames.items())):
             print('Processing {} of {} - sensor {}'.format(i_sens+1, len(CDM.sensor_frames), sens))
             frames_this = [frame for frame in frames if frame in frames_all]
             egos_this = {frame:egos[frame] for frame in frames_this}
@@ -106,36 +106,51 @@ def process_func_frames(CDM, sens, obj_sens_folder, ego, objects_global, i_frame
         for obj in objects_local:
             obj.change_reference(calib.reference, inplace=True)
 
-        # -- filter in view of cameras
-        if 'cam' in sens.lower():
+        # -- filter in view of sensors
+        if ('cam' in sens.lower()) or ('radar' in sens.lower()):
             objects_local = [obj for obj in objects_local if
                 avstack.maskfilters.box_in_fov(obj.box, calib,
                     d_thresh=150, check_reference=False)]
-
+    
         # -- get depth image
         check_reference = False
         if 'CAM' in sens:
-            if 'DEPTH' not in sens:
-                sens_d = 'DEPTH' + sens
+            if 'SEMSEG' in sens:
+                # sens_d = sens.replace('SEMSEG', 'DEPTH')
+                sens_d = None  # only do the lidar-based approach for now...
+            elif 'DEPTH' not in sens:
+                # sens_d = sens + "_DEPTH"
+                sens_d = None  # only do the lidar-based approach for now...
             else:
-                sens_d = sens
+                # sens_d = sens
+                sens_d = None  # only do the lidar-based approach for now...
             try:
-                d_img = CDM.get_depthimage(i_frame, sens_d)
+                if sens_d is not None:
+                    d_img = CDM.get_depth_image(i_frame, sens_d)
+                else:
+                    d_img = None
             except Exception as e:
                 d_img = None
+            if d_img is None:
                 try:
                     if 'infra' in sens.lower():
-                        pc = CDM.get_lidar(i_frame, sens.replace('CAM', 'LIDAR'))  # hack this for now....
+                        pc = CDM.get_lidar(i_frame, sens.replace('CAM', 'LIDAR'))  # HACK this for now....
                     else:
-                        pc = CDM.get_lidar(i_frame, 'LIDAR_TOP')  # hack this for now....
+                        pc = CDM.get_lidar(i_frame, 'LIDAR_TOP')  # HACK this for now....
                     check_reference = True
                 except Exception as e:
                     logging.warning(e)
                     pc = None
                     print('Could not load depth image...setting occlusion as UNKNOWN')
+            else:
+                pc = None
         elif 'LIDAR' in sens:
             d_img = None
             pc = CDM.get_lidar(i_frame, sens)
+        elif 'RADAR' in sens:
+            d_img = None
+            pc = CDM.get_lidar(i_frame, 'LIDAR_TOP')  # HACK this for now
+            check_reference = True
         else:
             raise NotImplementedError(sens)
 

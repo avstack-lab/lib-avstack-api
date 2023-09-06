@@ -216,6 +216,7 @@ def bootstrap_display(world, ego, cfg=None, config_file="./default_display.yml")
 
 sensor_options = {
     "camera": sensors.RgbCameraSensor,
+    "semsegcam": sensors.SemanticSegmentationSensor,
     "gnss": sensors.GnssSensor,
     "gps": sensors.GnssSensor,
     "depthcam": sensors.DepthCameraSensor,

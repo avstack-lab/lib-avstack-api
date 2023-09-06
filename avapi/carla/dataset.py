@@ -94,9 +94,16 @@ class CarlaSceneDataset(BaseSceneDataset):
     nominal_whitelist_types = _nominal_whitelist_types
     nominal_ignore_types = _nominal_ignore_types
     sensors = {
-        "main_lidar": "LIDAR_TOP",
         "lidar": "LIDAR_TOP",
+        "main_lidar": "LIDAR_TOP",
+        "camera": "CAM_FRONT",
         "main_camera": "CAM_FRONT",
+        "radar": "RADAR_FRONT",
+        "main_radar": "RADAR_FRONT",
+        "semseg": "CAM_FRONT_SEMSEG",
+        "main_semseg": "CAM_FRONT_SEMSEG",
+        "depth": "CAM_FRONT_DEPTH",
+        "main_depth": "CAM_FRONT_DEPTH",
     }
 
     def __init__(
@@ -250,20 +257,7 @@ class CarlaSceneDataset(BaseSceneDataset):
             calib = json.load(f, cls=calibration.CalibrationDecoder)
         return calib
 
-    def _load_image(self, frame, sensor):
-        timestamp = None
-        filepath = (
-            self.get_sensor_file(frame, timestamp, sensor, "data")
-            + self.file_endings[sensor]
-        )
-        assert os.path.exists(filepath), filepath
-        try:
-            return imread(filepath)[:,:,::-1]
-        except TypeError as e:
-            print(filepath)
-            raise e
-
-    def _load_depth_image(self, frame, sensor):
+    def _load_im_general(self, frame, sensor):
         timestamp = None
         filepath = (
             self.get_sensor_file(frame, timestamp, sensor, "data")
@@ -275,6 +269,15 @@ class CarlaSceneDataset(BaseSceneDataset):
         except TypeError as e:
             print(filepath)
             raise e
+        
+    def _load_image(self, frame, sensor):
+        return self._load_im_general(frame, sensor)
+
+    def _load_semseg_image(self, frame, sensor):
+        return self._load_im_general(frame, sensor)
+    
+    def _load_depth_image(self, frame, sensor):
+        return self._load_im_general(frame, sensor)
 
     def _load_lidar(self, frame, sensor, filter_front, with_panoptic=False):
         timestamp = None
@@ -294,6 +297,16 @@ class CarlaSceneDataset(BaseSceneDataset):
             return pcd[pcd[:, 0] > 0, :]  # assumes z is forward....
         else:
             return pcd
+        
+    def _load_radar(self, frame, sensor):
+        timestamp = None
+        filepath = (
+            self.get_sensor_file(frame, timestamp, sensor, "data")
+            + self.file_endings[sensor]
+        )
+        assert os.path.exists(filepath), filepath
+        rad = np.fromfile(filepath, dtype=np.float32).reshape((-1, 4))
+        return rad
 
     def _load_ego(self, frame):
         timestamp = None

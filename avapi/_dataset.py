@@ -141,6 +141,10 @@ class BaseSceneDataset:
     def get_ego_reference(self, frame):
         return self.get_ego(frame).as_reference()
 
+    def get_sensor_data_filepath(self, frame, sensor):
+        sensor = self.get_sensor_name(sensor)
+        return self._load_sensor_data_filepath(frame, sensor)
+    
     def get_image(self, frame, sensor=None):
         sensor = self.get_sensor_name(sensor)
         ts = self.get_timestamp(frame, sensor)
@@ -153,15 +157,25 @@ class BaseSceneDataset:
         return sensors.ImageData(
             ts, frame, data, calib, self.get_sensor_ID(cam_string), channel_order="rgb"
         )
-
-    def get_sensor_data_filepath(self, frame, sensor):
-        sensor = self.get_sensor_name(sensor)
-        return self._load_sensor_data_filepath(frame, sensor)
-
-    def get_depthimage(self, frame, sensor):
+    
+    def get_semseg_image(self, frame, sensor=None):
+        if sensor is None:
+            sensor = self.sensors["semseg"]
         sensor = self.get_sensor_name(sensor)
         ts = self.get_timestamp(frame, sensor)
-        data = self._load_image(frame, sensor=sensor)
+        data = self._load_semseg_image(frame, sensor=sensor)
+        cam_string = "image-%i" % sensor if isinstance(sensor, int) else sensor
+        calib = self.get_calibration(frame, cam_string)
+        return sensors.SemanticSegmentationImageData(
+            ts, frame, data, calib, self.get_sensor_ID(cam_string)
+        )
+    
+    def get_depth_image(self, frame, sensor=None):
+        if sensor is None:
+            sensor = self.sensors["depth"]
+        sensor = self.get_sensor_name(sensor)
+        ts = self.get_timestamp(frame, sensor)
+        data = self._load_depth_image(frame, sensor=sensor)
         cam_string = "image-%i" % sensor if isinstance(sensor, int) else sensor
         calib = self.get_calibration(frame, cam_string)
         return sensors.DepthImageData(
@@ -204,6 +218,7 @@ class BaseSceneDataset:
         ts = self.get_timestamp(frame, sensor)
         calib = self.get_calibration(frame, sensor)
         data = self._load_radar(frame, sensor)  # razelrrt data
+        data = PointMatrix3D(data, calib)
         rad = sensors.RadarDataRazelRRT(
             ts, frame, data, calib, self.get_sensor_ID(sensor)
         )
@@ -270,6 +285,12 @@ class BaseSceneDataset:
         raise NotImplementedError
 
     def _load_image(self, frame, camera):
+        raise NotImplementedError
+    
+    def _load_semseg_image(self, frame, camera):
+        raise NotImplementedError
+    
+    def _load_depth_image(self, frame, camera):
         raise NotImplementedError
 
     def _load_lidar(self, frame):

@@ -16,8 +16,8 @@ import weakref
 import avstack.sensors
 import carla
 import numpy as np
-from avstack.calibration import Calibration, CameraCalibration
-from avstack.geometry import Attitude, Position, ReferenceFrame, q_stan_to_cam
+from avstack import calibration
+from avstack.geometry import ReferenceFrame, q_stan_to_cam
 from avstack.geometry import transformations as tforms
 from carla import ColorConverter as cc
 
@@ -88,11 +88,24 @@ class Sensor:
             # -- not a camera!
             self.P = None
         self.reference = ReferenceFrame(x, q_c, self.parent.reference)
-        if self.P is None:
-            self.calibration = Calibration(self.reference)
-        else:
+
+        if self.name == "lidar":
+            self.calibration = calibration.LidarCalibration(self.reference)
+        elif self.name == "radar":
+            fov_h = float(attr["horizontal_fov"]) * np.pi/180
+            fov_v = float(attr["vertical_fov"]) * np.pi/180
+            self.calibration = calibration.RadarCalibration(self.reference, fov_h, fov_v)
+        elif self.name == "camera":
             imsize = (h, w)
-            self.calibration = CameraCalibration(self.reference, self.P, imsize)
+            self.calibration = calibration.CameraCalibration(self.reference, self.P, imsize, channel_order="rgb")
+        elif self.name == "semseg_camera":
+            imsize = (h, w)
+            self.calibration = calibration.SemanticSegmentationCalibration(self.reference, self.P, imsize, channel_order="rgb")
+        elif self.name == "depth_camera":
+            imsize = (h, w)
+            self.calibration = calibration.DepthCameraCalibration(self.reference, self.P, imsize, channel_order="rgb")
+        else:
+            raise NotImplementedError(self.name)
 
         # -- spawn from blueprint
         self.attr = attr
@@ -236,10 +249,22 @@ class RgbCameraSensor(Sensor):
         self._make_data_class(image.timestamp, image.frame, np_img)
 
 
+class SemanticSegmentationSensor(Sensor):
+    next_id = itertools.count()
+    blueprint_name = "sensor.camera.semantic_segmentation"
+    name = "semseg_camera"
+    base_data = avstack.sensors.SemanticSegmentationImageData
+
+    @staticmethod
+    def _on_sensor_event(weak_self, image):
+        self = weak_self()
+        self._make_data_class(image.timestamp, image.frame, image)
+
+
 class DepthCameraSensor(Sensor):
     next_id = itertools.count()
     blueprint_name = "sensor.camera.depth"
-    name = "camera"
+    name = "depth_camera"
     base_data = avstack.sensors.DepthImageData
 
     @staticmethod
