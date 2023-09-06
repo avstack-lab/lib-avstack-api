@@ -82,168 +82,168 @@ ego:
             pitch: 0
             yaw: 0
             roll: 0
-    # - camera 1:
-    #     name: 'CAM_BACK'
-    #     attributes:
-    #       sensor_tick: 0.10
-    #       fov: 90
-    #       image_size_x: 1600
-    #       image_size_y: 900
-    #     save: true
-    #     noise: {}
-    #     transform:
-    #       location:
-    #         x: -1.6
-    #         y: 0
-    #         z: 1.6
-    #       rotation:
-    #         pitch: 0
-    #         yaw: 180
-    #         roll: 0
-    # - semsegcam 1:
-    #     name: 'CAM_BACK_SEMSEG'
-    #     attributes:
-    #       sensor_tick: 0.10
-    #       fov: 90
-    #       image_size_x: 1600
-    #       image_size_y: 900
-    #     save: true
-    #     noise: {}
-    #     transform:
-    #       location:
-    #         x: -1.6
-    #         y: 0
-    #         z: 1.6
-    #       rotation:
-    #         pitch: 0
-    #         yaw: 180
-    #         roll: 0
-    # - depthcam 1:
-    #     name: 'CAM_BACK_DEPTH'
-    #     attributes:
-    #       sensor_tick: 0.10
-    #       fov: 90
-    #       image_size_x: 1600
-    #       image_size_y: 900
-    #     save: true
-    #     noise: {}
-    #     transform:
-    #       location:
-    #         x: -1.6
-    #         y: 0
-    #         z: 1.6
-    #       rotation:
-    #         pitch: 0
-    #         yaw: 180
-    #         roll: 0
-    # - camera 2:
-    #     name: 'CAM_FRONT_RIGHT'
-    #     attributes:
-    #       sensor_tick: 0.10
-    #       fov: 90
-    #       image_size_x: 1600
-    #       image_size_y: 900
-    #     save: true
-    #     noise: {}
-    #     transform:
-    #       location:
-    #         x: 1.0
-    #         y: 1.0
-    #         z: 1.6
-    #       rotation:
-    #         pitch: 0
-    #         yaw: 90
-    #         roll: 0
-    # - semsegcam 2:
-    #     name: 'CAM_FRONT_RIGHT_SEMSEG'
-    #     attributes:
-    #       sensor_tick: 0.10
-    #       fov: 90
-    #       image_size_x: 1600
-    #       image_size_y: 900
-    #     save: true
-    #     noise: {}
-    #     transform:
-    #       location:
-    #         x: 1.0
-    #         y: 1.0
-    #         z: 1.6
-    #       rotation:
-    #         pitch: 0
-    #         yaw: 90
-    #         roll: 0
-    # - depthcam 2:
-    #     name: 'CAM_FRONT_RIGHT_DEPTH'
-    #     attributes:
-    #       sensor_tick: 0.10
-    #       fov: 90
-    #       image_size_x: 1600
-    #       image_size_y: 900
-    #     save: true
-    #     noise: {}
-    #     transform:
-    #       location:
-    #         x: 1.0
-    #         y: 1.0
-    #         z: 1.6
-    #       rotation:
-    #         pitch: 0
-    #         yaw: 90
-    #         roll: 0
-    # - camera 3:
-    #     name: 'CAM_FRONT_LEFT'
-    #     attributes:
-    #       sensor_tick: 0.10
-    #       fov: 90
-    #       image_size_x: 1600
-    #       image_size_y: 900
-    #     save: true
-    #     noise: {}
-    #     transform:
-    #       location:
-    #         x: 1.0
-    #         y: -1.0
-    #         z: 1.6
-    #       rotation:
-    #         pitch: 0
-    #         yaw: -90
-    #         roll: 0
-    # - semsegcam 3:
-    #     name: 'CAM_FRONT_LEFT_SEMSEG'
-    #     attributes:
-    #       sensor_tick: 0.10
-    #       fov: 90
-    #       image_size_x: 1600
-    #       image_size_y: 900
-    #     save: true
-    #     noise: {}
-    #     transform:
-    #       location:
-    #         x: 1.0
-    #         y: -1.0
-    #         z: 1.6
-    #       rotation:
-    #         pitch: 0
-    #         yaw: -90
-    #         roll: 0
-    # - depthcam 3:
-    #     name: 'CAM_FRONT_LEFT_DEPTH'
-    #     attributes:
-    #       sensor_tick: 0.10
-    #       fov: 90
-    #       image_size_x: 1600
-    #       image_size_y: 900
-    #     save: true
-    #     noise: {}
-    #     transform:
-    #       location:
-    #         x: 1.0
-    #         y: -1.0
-    #         z: 1.6
-    #       rotation:
-    #         pitch: 0
-    #         yaw: -90
-    #         roll: 0
+    - camera 1:
+        name: 'CAM_BACK'
+        attributes:
+          sensor_tick: 0.10
+          fov: 90
+          image_size_x: 1600
+          image_size_y: 900
+        save: true
+        noise: {}
+        transform:
+          location:
+            x: -1.6
+            y: 0
+            z: 1.6
+          rotation:
+            pitch: 0
+            yaw: 180
+            roll: 0
+    - semsegcam 1:
+        name: 'CAM_BACK_SEMSEG'
+        attributes:
+          sensor_tick: 0.10
+          fov: 90
+          image_size_x: 1600
+          image_size_y: 900
+        save: true
+        noise: {}
+        transform:
+          location:
+            x: -1.6
+            y: 0
+            z: 1.6
+          rotation:
+            pitch: 0
+            yaw: 180
+            roll: 0
+    - depthcam 1:
+        name: 'CAM_BACK_DEPTH'
+        attributes:
+          sensor_tick: 0.10
+          fov: 90
+          image_size_x: 1600
+          image_size_y: 900
+        save: true
+        noise: {}
+        transform:
+          location:
+            x: -1.6
+            y: 0
+            z: 1.6
+          rotation:
+            pitch: 0
+            yaw: 180
+            roll: 0
+    - camera 2:
+        name: 'CAM_FRONT_RIGHT'
+        attributes:
+          sensor_tick: 0.10
+          fov: 90
+          image_size_x: 1600
+          image_size_y: 900
+        save: true
+        noise: {}
+        transform:
+          location:
+            x: 1.0
+            y: 1.0
+            z: 1.6
+          rotation:
+            pitch: 0
+            yaw: 90
+            roll: 0
+    - semsegcam 2:
+        name: 'CAM_FRONT_RIGHT_SEMSEG'
+        attributes:
+          sensor_tick: 0.10
+          fov: 90
+          image_size_x: 1600
+          image_size_y: 900
+        save: true
+        noise: {}
+        transform:
+          location:
+            x: 1.0
+            y: 1.0
+            z: 1.6
+          rotation:
+            pitch: 0
+            yaw: 90
+            roll: 0
+    - depthcam 2:
+        name: 'CAM_FRONT_RIGHT_DEPTH'
+        attributes:
+          sensor_tick: 0.10
+          fov: 90
+          image_size_x: 1600
+          image_size_y: 900
+        save: true
+        noise: {}
+        transform:
+          location:
+            x: 1.0
+            y: 1.0
+            z: 1.6
+          rotation:
+            pitch: 0
+            yaw: 90
+            roll: 0
+    - camera 3:
+        name: 'CAM_FRONT_LEFT'
+        attributes:
+          sensor_tick: 0.10
+          fov: 90
+          image_size_x: 1600
+          image_size_y: 900
+        save: true
+        noise: {}
+        transform:
+          location:
+            x: 1.0
+            y: -1.0
+            z: 1.6
+          rotation:
+            pitch: 0
+            yaw: -90
+            roll: 0
+    - semsegcam 3:
+        name: 'CAM_FRONT_LEFT_SEMSEG'
+        attributes:
+          sensor_tick: 0.10
+          fov: 90
+          image_size_x: 1600
+          image_size_y: 900
+        save: true
+        noise: {}
+        transform:
+          location:
+            x: 1.0
+            y: -1.0
+            z: 1.6
+          rotation:
+            pitch: 0
+            yaw: -90
+            roll: 0
+    - depthcam 3:
+        name: 'CAM_FRONT_LEFT_DEPTH'
+        attributes:
+          sensor_tick: 0.10
+          fov: 90
+          image_size_x: 1600
+          image_size_y: 900
+        save: true
+        noise: {}
+        transform:
+          location:
+            x: 1.0
+            y: -1.0
+            z: 1.6
+          rotation:
+            pitch: 0
+            yaw: -90
+            roll: 0
     - lidar 0:
         name: 'LIDAR_TOP'
         save: true
