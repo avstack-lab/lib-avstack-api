@@ -17,7 +17,6 @@ infrastructure:
 
 ego:
   idx_spawn: 'random'
-  idx_vehicle: 'lincoln'
   idx_vehicle: 0
   idx_destination: 'random'
   roaming: true

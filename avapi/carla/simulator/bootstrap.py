@@ -35,7 +35,7 @@ def bootstrap_client(cfg=None, config_file="./default_client.yml"):
         client.set_timeout(2.0)
         traffic_manager = client.get_trafficmanager(cfg["traffic_manager_port"])
         traffic_manager.set_synchronous_mode(cfg["synchronous"])
-    except Exception as e:
+    except (KeyboardInterrupt, Exception) as e:
         raise e  # to handle errors in the future
 
     world = client.get_world()
@@ -47,7 +47,8 @@ def bootstrap_client(cfg=None, config_file="./default_client.yml"):
     return client, world, traffic_manager, orig_settings
 
 
-def apply_world_settings(world, cfg):
+def bootstrap_npcs(world, cfg):
+    npcs_cfg = []
     # -- get walker info
     blueprints = world.get_blueprint_library().filter("walker.pedestrian.*")
     n_walkers = cfg["n_random_walkers"]
@@ -58,19 +59,69 @@ def apply_world_settings(world, cfg):
                 world.get_random_location_from_navigation(), carla.Rotation()
             )
         )
-    npcs_walk = _spawn_agents(world, blueprints, spawn_points, n_walkers)
+    npcs_walk = _spawn_agents_randomly(world, blueprints, spawn_points, n_walkers)
 
     # -- get vehicle info
     blueprints = world.get_blueprint_library().filter("vehicle.*")
     spawn_points = world.get_map().get_spawn_points()
     n_vehicles = cfg["n_random_vehicles"]
-    npcs_veh = _spawn_agents(world, blueprints, spawn_points, n_vehicles)
+    npcs_veh_random = _spawn_agents_randomly(
+        world, blueprints, spawn_points, n_vehicles
+    )
+
+    blueprints = world.get_blueprint_library().filter("vehicle.*")
+    spawn_points = world.get_map().get_spawn_points()
+    npcs_agents_placed = _spawn_agents_placed(
+        world, blueprints, spawn_points, cfg["placed_agents"]
+    )
 
     time.sleep(2)
-    return npcs_walk + npcs_veh
+    return npcs_walk + npcs_veh_random + npcs_agents_placed, npcs_cfg
 
 
-def _spawn_agents(world, blueprints, spawn_points, n_agents):
+def _spawn_agents_placed(world, blueprints, spawn_points, placed_vehicles):
+    npcs = []
+    try:
+        for name, cfg in placed_vehicles.items():
+            # -- get object blueprint
+            if cfg["type"] == "vehicle":
+                if cfg["idx_vehicle"] is None:
+                    bp = random.choice(blueprints)
+                else:
+                    bp = blueprints[cfg["idx_vehicle"]]
+            elif cfg["type"] == "walker":
+                raise NotImplementedError
+            else:
+                raise NotImplementedError(cfg["type"])
+
+            # -- get object spawn point
+            if cfg["idx_spawn"] in [None, "randint"]:
+                spawn_point = np.random.choice(spawn_points)
+            else:
+                spawn_point = spawn_points[cfg["idx_spawn"]]
+            if cfg["delta_spawn"]:
+                dspawn = carla.Vector3D(
+                    x=cfg["delta_spawn"]["x"],
+                    y=cfg["delta_spawn"]["y"],
+                    z=cfg["delta_spawn"]["z"],
+                )
+                spawn_point.location += dspawn
+
+            # -- spawn and set attributes
+            npc = world.try_spawn_actor(bp, spawn_point)
+            if npc is not None:
+                npc.set_autopilot(cfg["autopilot"])
+                npcs.append(npc)
+    except (KeyboardInterrupt, Exception) as e:
+        for npc in npcs:
+            npc.destroy()
+        raise e
+    print("Successfully spawned %i npcs in placed locations" % len(npcs))
+
+    return npcs
+
+
+def _spawn_agents_randomly(world, blueprints, spawn_points, n_agents):
     # Check the number of agents
     if n_agents < len(spawn_points):
         random.shuffle(spawn_points)
@@ -111,11 +162,11 @@ def _spawn_agents(world, blueprints, spawn_points, n_agents):
                     npc.set_autopilot(True)
                 npcs.append(npc)
                 i_succ += 1
-    except Exception as e:
+    except (KeyboardInterrupt, Exception) as e:
         for npc in npcs:
             npc.destroy()
         raise e
-    print("Successfully spawned %i npcs" % i_succ)
+    print("Successfully spawned %i npcs randomly" % i_succ)
     return npcs
 
 
@@ -136,15 +187,24 @@ def bootstrap_display(world, ego, cfg=None, config_file="./default_display.yml")
 
         # -- display manager
         hud = display.HUD(cfg["disp_x"], cfg["disp_y"])
+        hud_sensors = bootstrap_hud_sensors(ego, cfg["sensors"])
         world.on_tick(hud.on_world_tick)
-        display_manager = display.CameraDisplayManager(
-            ego, pg_display, hud, gamma_correction=2.2
-        )
+        ego_cameras = [
+            sensor for sensor in ego.sensors.values() if sensor.name == "camera"
+        ]
         try:
-            display_manager.set_sensor(notify=False)
+            display_manager = display.CameraDisplayManager(
+                ego, pg_display, hud, hud_sensors, ego_cameras, gamma_correction=2.2
+            )
+        except (KeyboardInterrupt, Exception) as e:
+            for sensor in hud_sensors:
+                sensor.destroy()
+            raise e
+        try:
+            display_manager.set_camera(notify=False)
             # -- keyboard controls
             keyboard_control = display.KeyboardControl(display_manager)
-        except Exception as e:
+        except (KeyboardInterrupt, Exception) as e:
             display_manager.destroy()
             raise e
     else:
@@ -180,7 +240,7 @@ def bootstrap_ego(
             sens.reset_next_id()
         for i, cfg_sensor in enumerate(cfg["sensors"]):
             bootstrap_ego_sensor(ego, i, cfg_sensor, save_folder)
-    except Exception as e:
+    except (KeyboardInterrupt, Exception) as e:
         ego.destroy()
         raise e
 
@@ -196,7 +256,6 @@ def bootstrap_infrastructure(
     if cfg is None:
         cfg = config.read_config(config_file)
 
-    # import ipdb; ipdb.set_trace()
     # -- infrastructure class to act like "parent" actor
     infra = InfrastructureManager(world)
 
@@ -208,7 +267,7 @@ def bootstrap_infrastructure(
             for idx in range(cfg[k]["n_spawn"]):
                 bootstrap_infra_sensor(infra, idx, cfg[k], save_folder=save_folder)
                 n_infra_spawn += 1
-    except Exception as e:
+    except (KeyboardInterrupt, Exception) as e:
         infra.destroy()
         raise e
     print("Spawned %i infrastructure elements" % n_infra_spawn)
@@ -257,12 +316,12 @@ def bootstrap_infra_sensor(infra, idx, cfg, save_folder):
     source_name = cfg["name_prefix"] + f"_{idx+1:03d}"
     pos_covar = cfg["position_uncertainty"]
     sens = sens(
-        source_name,
-        infra,
-        tform_spawn,
-        cfg["attributes"],
-        cfg["mode"],
-        cfg["noise"],
+        source_name=source_name,
+        parent=infra,
+        tform=tform_spawn,
+        attr=cfg["attributes"],
+        mode=cfg["mode"],
+        noise=cfg["noise"],
         save=cfg["save"],
         save_folder=save_folder,
     )
@@ -277,9 +336,9 @@ def bootstrap_ego_sensor(ego, ID, cfg, save_folder):
     # --- make sensor
     assert isinstance(cfg, dict)
     if len(cfg) != 1:
-        import ipdb
+        import pdb
 
-        ipdb.set_trace()
+        pdb.set_trace()
         raise RuntimeError
     k1 = list(cfg.keys())[0]
     source_name = cfg[k1]["name"]
@@ -304,64 +363,99 @@ def bootstrap_ego_sensor(ego, ID, cfg, save_folder):
     ego.add_sensor(
         k1,
         sens(
-            source_name,
-            ego,
-            tform,
-            cfg[k1]["attributes"],
-            cfg[k1]["mode"],
-            cfg[k1]["noise"],
+            source_name=source_name,
+            parent=ego,
+            tform=tform,
+            attr=cfg[k1]["attributes"],
+            mode=cfg[k1]["mode"],
+            noise=cfg[k1]["noise"],
             save=cfg[k1]["save"],
             save_folder=save_folder,
         ),
     )
 
 
-def bootstrap_npcs(world, cfg, verbose=False):
-    npcs = []
-    npc_cfgs = []
-
-    # -- add npcs that for some reason carla decided to auto-create...
-    # actors_pre = world.get_actors()
-    # whitelists = ['vehicle', 'walker']
-    # for actor in actors_pre:
-    #     if sum([w in actor.type_id for w in whitelists]) > 0:
-    #         npcs.append(actor)
-    #         npc_cfgs.append(actor.attributes)
-
-    # -- add npcs from the world
-    for item in cfg:
-        if not "npc" in item:
-            continue
-        # -- spawn
-        spawn_points = world.get_map().get_spawn_points()
-        spawn_point = (
-            spawn_points[cfg[item]["idx_spawn"]]
-            if cfg[item]["idx_spawn"]
-            else random.choice(spawn_points)
+def bootstrap_hud_sensors(ego, cfg):
+    hud_sensors = []
+    for scfg in cfg:
+        k1 = list(scfg.keys())[0]
+        scfg = scfg[k1]
+        tform = carla.Transform(
+            carla.Location(
+                scfg["transform"]["location"]["x"],
+                scfg["transform"]["location"]["y"],
+                scfg["transform"]["location"]["z"],
+            ),
+            carla.Rotation(
+                scfg["transform"]["rotation"]["pitch"],
+                scfg["transform"]["rotation"]["yaw"],
+                scfg["transform"]["rotation"]["roll"],
+            ),
         )
-        bp = world.get_blueprint_library().filter(cfg[item]["type"])
-        if cfg[item]["idx_vehicle"] is None:
-            bp_choice = random.choice(bp)
-        else:
-            bp_choice = bp[cfg[item]["idx_vehicle"]]
-        d_spawn = cfg[item]["delta_spawn"]
-        spawn_point.location.x += d_spawn["x"]
-        spawn_point.location.y += d_spawn["y"]
-        spawn_point.location.z += d_spawn["z"]
-        try:
-            npcs.append(world.spawn_actor(bp_choice, spawn_point))
-        except RuntimeError as e:
-            print("Removing npcs")
-            for npc in npcs:
-                npc.destroy()
-            raise e
-        npc_cfgs.append(cfg[item])
-        # -- destination
-        if cfg[item]["autopilot"]:
-            npcs[-1].set_autopilot()
-        if verbose:
-            print("Spawned NPC")
-    return npcs, npc_cfgs
+        sens = sensors.RgbCameraSensor(
+            source_name=k1,
+            parent=ego,
+            tform=tform,
+            attr=scfg["attributes"],
+            mode=scfg["mode"],
+            noise=scfg["noise"],
+            listen=False,
+            spawn=False,
+            save=False,
+        )
+        hud_sensors.append(sens)
+    return hud_sensors
+
+
+# def bootstrap_npcs(world, cfg, verbose=False):
+#     npcs = []
+#     npc_cfgs = []
+
+#     # -- add npcs that for some reason carla decided to auto-create...
+#     # actors_pre = world.get_actors()
+#     # whitelists = ['vehicle', 'walker']
+#     # for actor in actors_pre:
+#     #     if sum([w in actor.type_id for w in whitelists]) > 0:
+#     #         npcs.append(actor)
+#     #         npc_cfgs.append(actor.attributes)
+
+#     # -- add npcs from the world
+#     for item in cfg:
+#         if not "npc" in item:
+#             continue
+
+#         import pdb; pdb.set_trace()
+
+#         # -- spawn
+#         spawn_points = world.get_map().get_spawn_points()
+#         spawn_point = (
+#             spawn_points[cfg[item]["idx_spawn"]]
+#             if cfg[item]["idx_spawn"]
+#             else random.choice(spawn_points)
+#         )
+#         bp = world.get_blueprint_library().filter(cfg[item]["type"])
+#         if cfg[item]["idx_vehicle"] is None:
+#             bp_choice = random.choice(bp)
+#         else:
+#             bp_choice = bp[cfg[item]["idx_vehicle"]]
+#         d_spawn = cfg[item]["delta_spawn"]
+#         spawn_point.location.x += d_spawn["x"]
+#         spawn_point.location.y += d_spawn["y"]
+#         spawn_point.location.z += d_spawn["z"]
+#         try:
+#             npcs.append(world.spawn_actor(bp_choice, spawn_point))
+#         except RuntimeError as e:
+#             print("Removing npcs")
+#             for npc in npcs:
+#                 npc.destroy()
+#             raise e
+#         npc_cfgs.append(cfg[item])
+#         # -- destination
+#         if cfg[item]["autopilot"]:
+#             npcs[-1].set_autopilot()
+#         if verbose:
+#             print("Spawned NPC")
+#     return npcs, npc_cfgs
 
 
 # -------------------------------------------------------------
@@ -370,8 +464,8 @@ def bootstrap_npcs(world, cfg, verbose=False):
 
 
 def bootstrap_standard(world, traffic_manager, ego_stack, cfg, save_folder):
-    if cfg is None:
-        cfg = config.read_config(config_file)
+    # if cfg is None:
+    #     cfg = config.read_config(config_file)
 
     # -- unload parked cars!
     try:
@@ -380,17 +474,17 @@ def bootstrap_standard(world, traffic_manager, ego_stack, cfg, save_folder):
         pass  # some version do not support this
 
     ego = bootstrap_ego(world, ego_stack, cfg["ego"], save_folder=save_folder)
-    npcs_random = apply_world_settings(world, cfg["world"])
-    try:
-        npcs_set, npc_cfgs = bootstrap_npcs(world, cfg)
-    except Exception as e:
-        ego.destroy()
-        raise e
+    npcs, npcs_cfg = bootstrap_npcs(world, cfg["world"])
+    # try:
+    #     npcs_set, npc_cfgs = bootstrap_npcs(world, cfg)
+    # except (KeyboardInterrupt, Exception) as e:
+    #     ego.destroy()
+    #     raise e
     try:
         infra = bootstrap_infrastructure(
             world, cfg["infrastructure"], save_folder=save_folder
         )
-    except Exception as e:
+    except (KeyboardInterrupt, Exception) as e:
         ego.destroy()
         for npc in npcs_set:
             npc.destroy()
@@ -401,13 +495,14 @@ def bootstrap_standard(world, traffic_manager, ego_stack, cfg, save_folder):
         traffic_manager,
         record_truth=cfg["recorder"]["record_truth"],
         record_folder=save_folder,
+        cfg=cfg,
     )
     manager.ego = ego
-    manager.npcs = npcs_random + npcs_set
+    manager.npcs = npcs
     manager.infrastructure = infra
     try:
-        manager.schedule_npc_events(npc_cfgs)
-    except Exception as e:
+        manager.schedule_npc_events(npcs_cfg)
+    except (KeyboardInterrupt, Exception) as e:
         manager.destroy()
         raise e
     return manager

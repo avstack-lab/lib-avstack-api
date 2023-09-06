@@ -131,7 +131,7 @@ class CarlaEgoActor:
                 dest_true = None
             self.destination = dest_true
             self.roaming = self.cfg["roaming"]
-        except Exception as e:
+        except (KeyboardInterrupt, Exception) as e:
             self.destroy()
             raise e
 
@@ -157,20 +157,20 @@ class CarlaEgoActor:
         self._spawn_actor()
         # --- make sensors attached to ego
         try:
-            # TODO: MOVE THE SENSOR OPTIONS TO A HIGHER LEVEL SOMEWHERE
-            sensor_options = {
-                "camera": sensors.RgbCameraSensor,
-                "gnss": sensors.GnssSensor,
-                "gps": sensors.GnssSensor,
-                "depthcam": sensors.DepthCameraSensor,
-                "imu": sensors.ImuSensor,
-                "lidar": sensors.LidarSensor,
-            }
-            for sens in sensor_options.values():
-                sens.reset_next_id()
+            # # TODO: MOVE THE SENSOR OPTIONS TO A HIGHER LEVEL SOMEWHERE
+            # sensor_options = {
+            #     "camera": sensors.RgbCameraSensor,
+            #     "gnss": sensors.GnssSensor,
+            #     "gps": sensors.GnssSensor,
+            #     "depthcam": sensors.DepthCameraSensor,
+            #     "imu": sensors.ImuSensor,
+            #     "lidar": sensors.LidarSensor,
+            # }
+            # for sens in sensor_options.values():
+            #     sens.reset_next_id()
             for i, cfg_sensor in enumerate(self.cfg["sensors"]):
-                bootstrap_ego_sensor(self, i, cfg_sensor, sensor_options, save_folder)
-        except Exception as e:
+                bootstrap_ego_sensor(self, i, cfg_sensor, save_folder)
+        except (KeyboardInterrupt, Exception) as e:
             self.destroy()
             raise e
         self.initialize(t0, frame0)
@@ -180,6 +180,7 @@ class CarlaEgoActor:
         q = tforms.transform_orientation(
             utils.carla_rotation_to_RPY(tf.rotation), "euler", "quat"
         )
+        # center of the vehicle
         pos = Position([tf.location.x, -tf.location.y, tf.location.z], GlobalOrigin3D)
         att = Attitude(q, GlobalOrigin3D)
         return Pose(pos, att)
@@ -294,8 +295,12 @@ class CarlaEgoActor:
         )
 
     def tick(self, t_elapsed, frame, infrastructure=None):
-        # -- apply algorithms
+        # -- update ground truth
         ground_truth = self.get_ground_truth(t_elapsed, frame)
+        self.reference.x = ground_truth.ego_state.position.x
+        self.reference.q = ground_truth.ego_state.attitude.q
+
+        # -- apply algorithms
         ctrl, alg_debug = self.algorithms.tick(
             frame,
             t_elapsed,
@@ -337,11 +342,14 @@ class CarlaEgoActor:
 
     def destroy(self):
         if self.actor is not None:
-            self.actor.destroy()
+            try:
+                self.actor.destroy()
+            except RuntimeError as e:
+                pass  # usually because already destroyed
         for s_name, sensor in self.sensors.items():
             try:
                 sensor.destroy()
-            except Exception as e:
+            except (KeyboardInterrupt, Exception) as e:
                 print(f"Could not destroy sensor {s_name}...continuing")
 
     def apply_control(self, ctrl):

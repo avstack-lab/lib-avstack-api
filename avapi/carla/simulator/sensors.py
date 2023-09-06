@@ -44,6 +44,8 @@ class Sensor:
         attr,
         mode,
         noise,
+        spawn=True,
+        listen=True,
         save=False,
         save_folder="./sensor_data",
     ):
@@ -94,24 +96,19 @@ class Sensor:
 
         # -- spawn from blueprint
         self.attr = attr
-        bp = parent.world.get_blueprint_library().find(self.blueprint_name)
+        self.bp = parent.world.get_blueprint_library().find(self.blueprint_name)
         for k, v in attr.items():
-            bp.set_attribute(k, str(v))
-        self.object = parent.world.spawn_actor(
-            bp,
-            tform,
-            attach_to=self.parent.actor,
-            attachment_type=carla.AttachmentType.Rigid,
-        )
-        time.sleep(0.5)  # to allow for initialization
+            self.bp.set_attribute(k, str(v))
+        self.tform = tform
+        self.listen = listen
+        self.object = None
+        if spawn:
+            self.spawn()
+            time.sleep(0.5)  # to allow for initialization
 
         # -- saving
         self.save = save
         self.save_folder = save_folder
-
-        # -- callback
-        weak_self = weakref.ref(self)
-        self.object.listen(lambda event: self._on_sensor_event(weak_self, event))
 
     @property
     def _default_subfolder(self):
@@ -127,11 +124,38 @@ class Sensor:
         self.initialized = True
 
     def destroy(self):
-        self.object.destroy()
+        if self.object is not None:
+            self.object.destroy()
 
     @abc.abstractmethod
     def _on_sensor_event(weak_self):
         """implemented in subclasses"""
+
+    def factory(self, spawn=True, listen=True):
+        return self.__class__(
+            source_name=self.source_name,
+            parent=self.parent,
+            tform=self.tform,
+            attr=self.attr,
+            mode=self.mode,
+            noise=self.noise,
+            spawn=spawn,
+            listen=listen,
+            save=self.save,
+            save_folder=self.save_folder,
+        )
+
+    def spawn(self):
+        self.object = self.parent.world.spawn_actor(
+            self.bp,
+            self.tform,
+            attach_to=self.parent.actor,
+            attachment_type=carla.AttachmentType.Rigid,
+        )
+        # -- callback
+        if self.listen:
+            weak_self = weakref.ref(self)
+            self.object.listen(lambda event: self._on_sensor_event(weak_self, event))
 
     def _make_data_class(self, timestamp, frame, data, **kwargs):
         if self.initialized:
@@ -197,11 +221,12 @@ class RgbCameraSensor(Sensor):
     blueprint_name = "sensor.camera.rgb"
     name = "camera"
     base_data = avstack.sensors.ImageData
+    converter = cc.Raw
 
     @staticmethod
     def _on_sensor_event(weak_self, image):
         self = weak_self()
-        image.convert(cc.Raw)
+        image.convert(self.converter)
         # I guess we need to do the conversion here....
         np_img = np.reshape(
             np.array(image.raw_data, dtype=np.float32), (image.height, image.width, 4)

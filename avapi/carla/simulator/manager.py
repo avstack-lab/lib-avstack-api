@@ -19,7 +19,7 @@ from . import recorder
 
 class CarlaManager:
     def __init__(
-        self, world, traffic_manager, record_truth=True, record_folder="sim-results/"
+        self, world, traffic_manager, cfg, record_truth=True, record_folder="sim-results/", buffer_dump=3,
     ):
         self._world = world
         self.traffic_manager = traffic_manager
@@ -27,11 +27,13 @@ class CarlaManager:
         self._ego = None
         self._running = False
         self._infrastructure = None
+        self.buffer_dump = buffer_dump
         self.t0 = None
         self.frame0 = None
         self.t_elapsed = 0
         self.frame = 0
         self.sensor_data = {}
+        self.cfg = cfg
         if record_truth:
             self.recorder = recorder.CarlaTruthRecorder(record_folder)
         else:
@@ -97,9 +99,9 @@ class CarlaManager:
 
     def _print_last_record_path(self):
         if self.recorder is not None:
-            print("Last results were saved in: %s" % self.recorder.format_folders)
+            print("Last results were saved in: %s" % self.recorder.folder)
             with open("last_run.txt", "w") as f:
-                str_write = "\n".join(self.recorder.format_folders)
+                str_write = "\n".join(self.recorder.folder)
                 f.write(str_write)
 
     def destroy(self):
@@ -109,7 +111,9 @@ class CarlaManager:
         self.infrastructure.destroy()
 
     def restart(self, save_folder=""):
-        time.sleep(3)  # allow time for buffers to dump...
+        from .bootstrap import bootstrap_npcs
+
+        time.sleep(self.buffer_dump)  # allow time for buffers to dump...
         if self.recorder is not None:
             self._print_last_record_path()
             self.recorder.restart(save_folder=save_folder)
@@ -118,7 +122,17 @@ class CarlaManager:
         self.frame0 = snap.frame
         self.t_elapsed = 0
         self.sensor_data = {}
+
+        # -- remove NPCs
+        self._npc_manager.destroy()
+
+        # -- reset EGO
         self.ego.restart(t0=self.t0, frame0=self.frame0, save_folder=save_folder)
+
+        # -- reset NPCs
+        self.npcs, npc_cfgs = bootstrap_npcs(self._world, self.cfg['world'])
+        self.schedule_npc_events(npc_cfgs)
+        time.sleep(1)
 
 
 class NpcManager:
@@ -133,7 +147,10 @@ class NpcManager:
     def npcs(self):
         if not self._npcs:
             warnings.warn("NPCS were queried, but none have been set yet")
-        return self._npcs
+        for npc in self._npcs:
+            if not npc.is_alive:
+                npc.destroy()
+        return [npc for npc in self._npcs if npc.is_alive]
 
     @npcs.setter
     def npcs(self, npcs):
@@ -141,12 +158,13 @@ class NpcManager:
             self._npcs.extend(npcs)
         else:
             self._npcs.append(npcs)
+        self._npcs = [npc for npc in self._npcs if npc.is_alive]
 
     def destroy(self):
         for i, npc in enumerate(self.npcs):
             try:
                 npc.destroy()
-            except Exception as e:
+            except (KeyboardInterrupt, Exception) as e:
                 print(f"Could not destroy npc {i}...continuing")
 
     def force_npc_lane_change(self, idx_npc: int, direction: bool):
@@ -243,5 +261,5 @@ class InfrastructureManager:
         for k, sens in self.sensors.items():
             try:
                 sens.destroy()
-            except Exception as e:
+            except (KeyboardInterrupt, Exception) as e:
                 print(f"Could not destroy sensor {k}...continuing")

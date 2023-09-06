@@ -123,6 +123,8 @@ def show_image_with_boxes(
         box_colors = ["green"] * len(boxes)
     elif isinstance(box_colors, str):
         box_colors = [box_colors] * len(boxes)
+    elif isinstance(box_colors, (tuple, list)) and len(box_colors)==3 and isinstance(box_colors[0], int):
+        box_colors = [box_colors] * len(boxes)
 
     # Get IDs
     if show_IDs:

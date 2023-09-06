@@ -10,7 +10,6 @@
 
 
 import os
-import pickle
 import shutil
 
 from avapi.carla.simulator import utils
@@ -24,19 +23,16 @@ from avapi.carla.simulator import utils
 class CarlaTruthRecorder:
     """Records truth data from the world in avstack format"""
 
-    def __init__(self, save_folder, format_as=["avstack"]):
-        self.folder = save_folder
-        self.format_as = format_as
-        assert isinstance(format_as, list)
-        self.format_folders = []
-        if os.path.exists(self.folder):
-            shutil.rmtree(self.folder)
-        for form in format_as:
-            self.format_folders.append(os.path.join(self.folder, "objects", form))
-            os.makedirs(self.format_folders[-1], exist_ok=False)
+    def __init__(self, save_folder, remove_if_exist=True):
+        self.remove_if_exist = remove_if_exist
+        self.save_folder = save_folder
+        self.folder = os.path.join(save_folder, "objects")
+        if remove_if_exist and os.path.exists(save_folder):
+            shutil.rmtree(save_folder)
+        os.makedirs(self.folder, exist_ok=True)
 
     def restart(self, save_folder):
-        self.__init__(save_folder, self.format_as)
+        self.__init__(save_folder, remove_if_exist=self.remove_if_exist)
 
     def record(self, t, frame, ego, npcs):
         """Main call to log data"""
@@ -49,15 +45,9 @@ class CarlaTruthRecorder:
 
     def _save_object_data(self, timestamp, frame, data, suffix):
         file = "timestamp_%08.2f-frame_%06d-%s.{}" % (timestamp, frame, suffix)
-        for folder, form in zip(self.format_folders, self.format_as):
-            if form == "pickle":
-                pickle.dump(data, open(os.path.join(folder, file.format("p")), "wb"))
-            elif form in ["kitti-object", "apolloscape-trajectory", "avstack"]:
-                data_strs = "\n".join([d.format_as(form) for d in data])
-                with open(os.path.join(folder, file.format("txt")), "w") as f:
-                    f.write(data_strs)
-            else:
-                raise NotImplementedError(f"Format {form} not implemented")
+        data_strs = "\n".join([d.encode() for d in data])
+        with open(os.path.join(self.folder, file.format("txt")), "w") as f:
+            f.write(data_strs)
 
     def _save_lane_lines(self):
         raise NotImplementedError

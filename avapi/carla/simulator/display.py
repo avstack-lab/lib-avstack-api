@@ -33,12 +33,11 @@ import os
 import weakref
 
 import carla
+import cv2
 import numpy as np
 import pygame
-from avstack import calibration
-from avstack.geometry import ReferenceFrame, bbox
+from avstack import maskfilters
 from avstack.sensors import ImageData
-from carla import ColorConverter as cc
 from pygame.locals import (
     K_0,
     K_9,
@@ -78,7 +77,6 @@ from pygame.locals import (
     K_z,
 )
 
-from avapi.carla.simulator import utils
 from avapi.visualize.snapshot import show_image_with_boxes
 
 
@@ -105,7 +103,9 @@ def get_actor_display_name(actor, truncate=250):
 
 
 class CameraDisplayManager(object):
-    def __init__(self, parent, pg_display, hud, gamma_correction):
+    def __init__(
+        self, parent, pg_display, hud, hud_sensors, ego_sensors, gamma_correction
+    ):
         self._parent = parent
         self.pg_display = pg_display
         self.hud = hud
@@ -133,58 +133,40 @@ class CameraDisplayManager(object):
         self.R_UE2C = np.array([[0, 1, 0], [0, 0, -1], [1, 0, 0]]).T
         bound_y = 0.5 + self._parent.actor.bounding_box.extent.y
 
-        # -- set the allowable cameras
-        self._camera_transforms = {}
-        self._camera_Ps = {}
-        self._camera_bbox = {}
-        self._camera_calibrations = {}
-        self.camera_classes = []
-        self.n_camera_views = {}
-        self.camera_types = [["sensor.camera.rgb", cc.Raw, "Camera RGB", {}]]
-
         # -- save the sensor type to be used
-        self.add_hud_cameras()
-        self.add_ego_cameras()
-        self.camera_class_index = 0
-        self.camera_type_index = 0
+        assert len(hud_sensors) > 0
+        self._view_sensors = {"hud": hud_sensors}
+        if len(ego_sensors) > 0:
+            self._view_sensors["ego"] = ego_sensors
+        self.camera_host_index = 0
         self.camera_view_index = 0
-
         self.object_representation_index = 0
-        self.object_camera_class_index = 0
-
-        self.set_cameras()
-
-    @property
-    def camera_class_name(self):
-        return self.camera_classes[self.camera_class_index]
+        self.object_camera_host_index = 0
+        self.set_camera()
 
     @property
-    def camera_type_name(self):
-        return self.camera_types[self.camera_type_index][2]
+    def camera_hosts(self):
+        return list(self._view_sensors.keys())
+
+    @property
+    def camera_host_name(self):
+        return self.camera_hosts[self.camera_host_index]
 
     @property
     def object_representation_name(self):
         return self.available_object_representations[self.object_representation_index]
 
     @property
-    def object_camera_class_name(self):
-        return self.camera_classes[self.object_camera_class_index]
+    def object_camera_host_name(self):
+        return self.camera_hosts[self.object_camera_host_index]
 
     @property
-    def camera_class_index(self):
-        return self._camera_class_index
+    def camera_host_index(self):
+        return self._camera_host_index
 
-    @camera_class_index.setter
-    def camera_class_index(self, index):
-        self._camera_class_index = index % len(self.camera_classes)
-
-    @property
-    def camera_type_index(self):
-        return self._camera_type_index
-
-    @camera_type_index.setter
-    def camera_type_index(self, index):
-        self._camera_type_index = index % len(self.camera_types)
+    @camera_host_index.setter
+    def camera_host_index(self, index):
+        self._camera_host_index = index % len(self.camera_hosts)
 
     @property
     def camera_view_index(self):
@@ -192,7 +174,7 @@ class CameraDisplayManager(object):
 
     @camera_view_index.setter
     def camera_view_index(self, index):
-        self._camera_view_index = index % self.n_camera_views[self.camera_class_name]
+        self._camera_view_index = index % len(self._view_sensors[self.camera_host_name])
 
     @property
     def object_representation_index(self):
@@ -208,12 +190,12 @@ class CameraDisplayManager(object):
             )
 
     @property
-    def object_camera_class_index(self):
-        return self._object_camera_class_index
+    def object_camera_host_index(self):
+        return self._object_camera_host_index
 
-    @object_camera_class_index.setter
-    def object_camera_class_index(self, index):
-        self._object_camera_class_index = index % len(self.camera_classes)
+    @object_camera_host_index.setter
+    def object_camera_host_index(self, index):
+        self._object_camera_host_index = index % len(self.camera_hosts)
 
     @property
     def available_object_representations(self):
@@ -223,7 +205,7 @@ class CameraDisplayManager(object):
                 for rep in self.object_representations
                 if (rep != "off")
                 and (
-                    self.objects[self.object_camera_class_name].get(rep, None)
+                    self.objects[self.object_camera_host_name].get(rep, None)
                     is not None
                 )
             ]
@@ -235,88 +217,13 @@ class CameraDisplayManager(object):
 
     def print_init(self):
         print(
-            "\nDisplay Manager ready with the following view classes and sensors:\n{}".format(
+            "\nDisplay Manager ready with the following view hosts and sensors:\n{}".format(
                 "\n".join(
-                    "  {} - {} sensors".format(
-                        dtype, len(self._camera_transforms[dtype])
-                    )
-                    for dtype in self.camera_classes
+                    "  {} - {} sensors".format(host, len(self._view_sensors[host]))
+                    for host in self._view_sensors
                 )
             )
         )
-
-    def set_cameras(self):
-        bp_library = self._parent.actor.get_world().get_blueprint_library()
-        for item in self.camera_types:
-            bp = bp_library.find(item[0])
-            if item[0].startswith("sensor.camera"):
-                bp.set_attribute("image_size_x", str(self.hud.dim[0]))
-                bp.set_attribute("image_size_y", str(self.hud.dim[1]))
-                if bp.has_attribute("gamma"):
-                    bp.set_attribute("gamma", str(self.gamma_correction))
-                for attr_name, attr_value in item[3].items():
-                    bp.set_attribute(attr_name, attr_value)
-            elif item[0].startswith("sensor.lidar"):
-                self.lidar_range = 50
-                for attr_name, attr_value in item[3].items():
-                    bp.set_attribute(attr_name, attr_value)
-                    if attr_name == "range":
-                        self.lidar_range = float(attr_value)
-            item.append(bp)
-        self.set_sensor(force_respawn=True)
-
-    def add_camera(self, camera_class_name, P, tform, attachment):
-        if camera_class_name not in self.camera_classes:
-            self.camera_classes.append(camera_class_name)
-            self.n_camera_views[camera_class_name] = 0
-            self._camera_transforms[camera_class_name] = []
-            self._camera_Ps[camera_class_name] = []
-            self._camera_bbox[camera_class_name] = []
-            self._camera_calibrations[camera_class_name] = []
-        self.n_camera_views[camera_class_name] += 1
-        self._camera_transforms[camera_class_name].append((tform, attachment))
-        self._camera_Ps[camera_class_name].append(P)
-        q = utils.carla_rotation_to_quaternion(tform.rotation)
-        x = utils.carla_location_to_numpy_vector(tform.location)
-        reference = ReferenceFrame(x, q, reference=self._parent.reference)
-        img_shape = (2 * P[1, 2], 2 * P[0, 2])
-        cam_calib = calibration.CameraCalibration(reference, P, img_shape)
-        self._camera_calibrations[camera_class_name].append(cam_calib)
-        self._camera_bbox[camera_class_name].append(
-            bbox.Box2D([0, 0, img_shape[0], img_shape[1]], cam_calib)
-        )
-
-    def add_hud_cameras(self):
-        """Add the HUD camera to the allowable views"""
-        # Make the camera transformation matrix relative to center of car
-        w = self.hud.dim[0]
-        h = self.hud.dim[1]
-        fov = 90.0  # horizontal FOV
-        f = w / (2 * np.tan(fov * math.pi / 360.0))
-        camera_P = np.array([[f, 0, w / 2.0, 0], [0, f, h / 2.0, 0], [0, 0, 1, 0]])
-
-        # front-view camera
-        self.add_camera(
-            "hud",
-            camera_P,
-            carla.Transform(carla.Location(x=-8.5, z=3.5)),
-            carla.AttachmentType.Rigid,
-        )
-        # bev camera
-        self.add_camera(
-            "hud",
-            camera_P,
-            carla.Transform(carla.Location(z=15), carla.Rotation(pitch=-90)),
-            carla.AttachmentType.Rigid,
-        )
-
-    def add_ego_cameras(self):
-        """Add a replica of the ego camera to the allowable views"""
-        for name, sensor in self._parent.sensors.items():
-            if "camera" in name:
-                P = sensor.P
-                T = sensor.tform_to_parent
-                self.add_camera("ego", P, T, carla.AttachmentType.Rigid)
 
     def tick(self, world, ego, clock, debug):
         self.set_objects("hud", debug["ground_truth"]["objects"])
@@ -324,19 +231,20 @@ class CameraDisplayManager(object):
         self.hud.tick(world, ego, clock, debug)
 
     def destroy(self):
-        if self.sensor is not None:
-            try:
-                self.sensor.destroy()
-            except RuntimeError as e:
-                # usually because it was already destroyed somehow
-                pass
-            finally:
-                self.sensor = None
+        for host in self._view_sensors:
+            for sensor in self._view_sensors[host]:
+                try:
+                    sensor.destroy()
+                except RuntimeError as e:
+                    # usually because it was already destroyed somehow
+                    pass
+                finally:
+                    self.sensor = None
 
     def restart(self, ego):
         self.destroy()
         self._parent = ego
-        self.set_cameras()
+        self.set_camera()
 
     def render(self):
         if self.surface is not None:
@@ -347,16 +255,16 @@ class CameraDisplayManager(object):
     def toggle_camera_view(self):
         """Swap between cameras within a class of views"""
         self.camera_view_index += 1
-        self.set_sensor(
+        self.set_camera(
             notify=False,
             force_respawn=True,
         )
 
     def toggle_camera_class(self):
         """Swap the class of views"""
-        dti_init = self.camera_class_index
-        self.camera_class_index += 1
-        if self.camera_class_index != dti_init:
+        dti_init = self.camera_host_index
+        self.camera_host_index += 1
+        if self.camera_host_index != dti_init:
             self.camera_view_index = -1
             self.toggle_camera_view()
 
@@ -364,44 +272,36 @@ class CameraDisplayManager(object):
         """Swap the type of camera used"""
         raise NotImplementedError
 
-    def set_sensor(self, notify=True, force_respawn=False):
-        needs_respawn = (
-            True
-            if self.camera_type_index is None
-            else (
-                force_respawn
-                #   or (self.sensors[type_index][2] != self.sensors[self.camera_type_index][2])
-            )
-        )
-        if needs_respawn:
+    def set_camera(self, notify=True, force_respawn=True):
+        respawn = (self.sensor is None) or force_respawn
+        if respawn:
+            # Must destroy the old viewing sensor
             if self.sensor is not None:
                 self.sensor.destroy()
-                self.surface = None
-            self.sensor = self._parent.actor.get_world().spawn_actor(
-                self.camera_types[self.camera_type_index][-1],
-                self._camera_transforms[self.camera_class_name][self.camera_view_index][
-                    0
-                ],
-                attach_to=self._parent.actor,
-                attachment_type=self._camera_transforms[self.camera_class_name][
-                    self.camera_view_index
-                ][1],
-            )
+
+            # Spawn the sensor
+            self.sensor = self._view_sensors[self.camera_host_name][
+                self.camera_view_index
+            ]
+            if self.camera_host_name != "hud":
+                self.sensor = self.sensor.factory(spawn=False, listen=False)
+            self.sensor.spawn()
+
             # We need to pass the lambda a weak reference to self to avoid
             # circular reference.
             weak_self = weakref.ref(self)
-            self.sensor.listen(
+            self.sensor.object.listen(
                 lambda image: CameraDisplayManager._parse_image(weak_self, image)
             )
         if notify:
-            notify_str = "Set display sensor to type {} of class {} #{}".format(
-                self.camera_type_name, self.camera_class_name, self.camera_view_index
+            notify_str = "Set display sensor to {} of host {} #{}".format(
+                self.sensor.name, self.camera_host_name, self.camera_view_index
             )
             self.hud.notification(notify_str)
 
     def next_sensor(self):
         self.camera_view_index += 1
-        self.set_sensor(notify=True, force_respawn=False)
+        self.set_camera(notify=True, force_respawn=False)
 
     def toggle_recording(self):
         self.recording = not self.recording
@@ -425,26 +325,31 @@ class CameraDisplayManager(object):
             f"\n\nRepresentation set as: {self.object_representation_name} from choices {self.available_object_representations}\n"
         )
 
-    def add_objects_to_image(self, img):
+    def add_objects_to_image(self, img, d_thresh=100):
         # pull off values in case of changes
         repr_name = self.object_representation_name
-        cam_class_name = self.camera_class_name
-        obj_cam_class_name = self.object_camera_class_name
+        obj_cam_host_name = self.object_camera_host_name
 
         img1 = img.astype(np.uint8).copy()
         if repr_name != "off":
+            cam_calib = self.sensor.calibration
+
             # Pull off objects
-            if repr_name == "gt_2d":
+            if ("2d" not in repr_name) or (repr_name == "gt_2d"):
                 objects = [
-                    obj.box3d.project_to_2d_bbox(
-                        self._camera_calibrations[cam_class_name][
-                            self.camera_view_index
-                        ]
-                    )
-                    for obj in self.objects[obj_cam_class_name]["gt_3d"]
+                    obj
+                    for obj in self.objects[obj_cam_host_name]["gt_3d"]
+                    if maskfilters.box_in_fov(obj.box, cam_calib, d_thresh=d_thresh)
                 ]
             else:
-                objects = self.objects[obj_cam_class_name][repr_name]
+                objects = self.objects[obj_cam_host_name][repr_name]
+
+            # Project gt_3d for gt_2d
+            if repr_name == "gt_2d":
+                objects = [
+                    obj.box3d.project_to_2d_bbox(self.sensor.calibration)
+                    for obj in objects
+                ]
 
             # 3D can always be shown
             if "3d" in repr_name:
@@ -464,11 +369,10 @@ class CameraDisplayManager(object):
                 timestamp=0,
                 frame=0,
                 data=img1,
-                calibration=self._camera_calibrations[cam_class_name][
-                    self.camera_view_index
-                ],
+                calibration=cam_calib,
                 source_ID=self.camera_view_index,
             )
+
             img1 = show_image_with_boxes(
                 img=img_data,
                 boxes=objects,
@@ -484,7 +388,7 @@ class CameraDisplayManager(object):
         self = weak_self()
         if not self:
             return
-        if self.camera_types[self.camera_type_index][0].startswith("sensor.lidar"):
+        if self.sensor.blueprint_name.startswith("sensor.lidar"):
             points = np.frombuffer(image.raw_data, dtype=np.dtype("f4"))
             points = np.reshape(points, (int(points.shape[0] / 4), 4))
             lidar_data = np.array(points[:, :2])
@@ -497,9 +401,7 @@ class CameraDisplayManager(object):
             lidar_img = np.zeros((lidar_img_size), dtype=np.uint8)
             lidar_img[tuple(lidar_data.T)] = (255, 255, 255)
             self.surface = pygame.surfarray.make_surface(lidar_img)
-        elif self.camera_types[self.camera_type_index][0].startswith(
-            "sensor.camera.dvs"
-        ):
+        elif self.sensor.blueprint_name.startswith("sensor.camera.dvs"):
             # Example of converting the raw_data from a carla.DVSEventArray
             # sensor into a NumPy array and using it as an image
             dvs_events = np.frombuffer(
@@ -520,17 +422,48 @@ class CameraDisplayManager(object):
             ] = 255
             self.surface = pygame.surfarray.make_surface(dvs_img.swapaxes(0, 1))
         else:
-            image.convert(self.camera_types[self.camera_type_index][1])
+            image.convert(self.sensor.converter)
             array = np.frombuffer(image.raw_data, dtype=np.dtype("uint8"))
             array = np.reshape(array, (image.height, image.width, 4))
             array = array[:, :, :3]
-            # --- add object boxes
+            # -- add object boxes
             if self.object_representation_name == "off":
                 array = array[:, :, ::-1]  # HACK for now
             array = self.add_objects_to_image(array)
+            # -- scale the image to fit the HUD, preserving aspect and padding
+            if array.shape != self.hud.dim:
+                array = scale_image_with_padding(
+                    array, width=self.hud.dim[0], height=self.hud.dim[1]
+                )
             self.surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
         if self.recording:
             image.save_to_disk("_out/%08d" % image.frame)
+
+
+def scale_image_with_padding(img, width, height):
+    """Scale image with consistent aspect ratio and add padding"""
+    # -- scale with constant aspect
+    scale_width = width / img.shape[1]
+    scale_height = height / img.shape[0]
+    scale = min(scale_width, scale_height)  # take min to ensure no cropping needed
+    dim = (int(img.shape[1] * scale), int(img.shape[0] * scale))
+    img = cv2.resize(img, dim, interpolation=cv2.INTER_LINEAR)
+
+    # -- fill the remainder
+    dw = width - img.shape[1]
+    assert dw >= 0, dw
+    dh = height - img.shape[0]
+    assert dh >= 0, dh
+    top = dh // 2
+    bottom = dh - top
+    left = dw // 2
+    right = dw - left
+    black = [0, 0, 0]
+    img = cv2.copyMakeBorder(
+        img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=black
+    )
+
+    return img
 
 
 class KeyboardControl(object):

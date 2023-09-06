@@ -13,3 +13,7 @@ transform:
     x: 1.6
     y: 0
     z: 1.6
+  rotation:
+    pitch: 0
+    yaw: 0
+    roll: 0

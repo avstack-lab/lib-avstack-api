@@ -52,6 +52,7 @@ def get_obj_type_from_actor(actor):
 
 
 def wrap_actor_to_vehicle_state(t, actor):
+    """Location is the bottom of the box"""
     obj_type = get_obj_type_from_actor(actor)
     h = 2 * actor.bounding_box.extent.z
     w = 2 * actor.bounding_box.extent.y

@@ -22,8 +22,6 @@ from avstack.geometry import (
     GlobalOrigin3D,
     Position,
     ReferenceFrame,
-    Rotation,
-    Vector,
     q_mult_vec,
     q_stan_to_cam,
 )
@@ -168,7 +166,9 @@ class KittiObjectDataset(BaseSceneDataset):
         h, w, l = self.ego_size
         pos = Position(np.zeros((3,)), reference)
         rot = Attitude(np.quaternion(1), reference)
-        box = Box3D(pos, rot, [h, w, l], where_is_t="bottom")
+        box = Box3D(
+            pos, rot, [h, w, l], where_is_t="bottom"
+        )  # TODO: this doesn't seem right
         ego.set(t=self.get_timestamp(frame), position=pos, box=box, attitude=rot)
         return ego
 

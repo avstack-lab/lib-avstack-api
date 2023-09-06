@@ -9,11 +9,14 @@ CARLA dataset manager on AVstack conventions
 """
 import glob
 import os
+from tqdm import tqdm
+import argparse
 
+import json
 import numpy as np
 from avstack import calibration
-from avstack.geometry import ReferenceFrame, Rotation, Vector, q_mult_vec
-from cv2 import imread, imwrite
+from avstack.environment import ObjectStateDecoder
+from cv2 import imread
 
 from .._dataset import BaseSceneDataset, BaseSceneManager
 
@@ -28,6 +31,28 @@ def check_xor_for_none(a, b):
 def get_splits_scenes(data_dir, modval=4, seed=1):
     CSM = CarlaScenesManager(data_dir)
     return CSM.make_splits_scenes(modval=modval, seed=seed)
+
+
+def run_dataset_postprocessing(data_dir):
+    """Run postprocessing to optimize dataset for usage
+    
+    Includes:
+        - saving object representations in sensor frames
+    """
+    CSM = CarlaScenesManager(data_dir=data_dir)
+    obj_dir = os.path.join(CSM.data_dir, 'objects_sensor')
+    for i_scene, CDM in enumerate(CSM):
+        print('Running scene {} of {}'.format(i_scene, len(CSM)))
+        for frame in tqdm(CDM.frames):
+            objects_global = CDM.get_objects_global(frame=frame)
+            for sensor in CDM.sensor_IDs:
+                calib = CDM.get_calibration(frame=frame, sensor=sensor)
+                object_string = "\n".join([obj.change_reference(calib.reference, inplace=False).encode() for obj in objects_global])
+                global_file = CSM.get_object_file(frame=frame, timestamp=None, is_ego=False, is_global=True)
+                file = os.path.join(obj_dir, sensor, global_file.split('/')[-1])
+                os.makedirs(os.path.dirname(file), exist_ok=True)
+                with open(file, 'w') as f:
+                    f.write(object_string)
 
 
 # _nominal_whitelist_types = ['car', 'pedestrian', 'bicycle',
@@ -45,15 +70,11 @@ class CarlaScenesManager(BaseSceneManager):
         """
         data_dir: the base folder where all scenes are kept
         """
-        raise NotImplementedError(
-            "The carla scene manager will not work"
-            " until the owner of the carla dataset regenerates"
-            " it with the latest AVstack geometry format."
-        )
-
         if not os.path.exists(data_dir):
             raise RuntimeError(f"Cannot find data dir at {data_dir}")
         self.data_dir = data_dir
+        self.split = split
+        self.verbose = verbose
         self.scenes = sorted(next(os.walk(data_dir))[1])
         self.splits_scenes = self.make_splits_scenes(modval=4, seed=1)
 
@@ -85,18 +106,14 @@ class CarlaSceneDataset(BaseSceneDataset):
         whitelist_types=_nominal_whitelist_types,
         ignore_types=_nominal_ignore_types,
     ):
-        raise NotImplementedError(
-            "The carla scene manager will not work"
-            " until the owner of the carla dataset regenerates"
-            " it with the latest AVstack geometry format."
-        )
+
         self.data_dir = data_dir
         self.scene = scene
         self.sequence_id = scene
         self.scene_path = os.path.join(data_dir, scene)
 
         # -- object and ego files
-        self.obj_folder = os.path.join(self.scene_path, "objects", "avstack")
+        self.obj_folder = os.path.join(self.scene_path, "objects")
         self.obj_local_folder = os.path.join(self.scene_path, "objects_sensor")
         ego_files = {"timestamp": {}, "frame": {}}
         npc_files = {"timestamp": {}, "frame": {}}
@@ -138,6 +155,8 @@ class CarlaSceneDataset(BaseSceneDataset):
                     raise ValueError(f"Cannot understand sensor data folder {sens}")
                 name, ID = sens.split("-")
                 sensor_IDs[name] = int(ID)
+                if name not in self.sensors:
+                    self.sensors[name] = name
                 sensor_folders[name] = os.path.join(sensor_data_folder, sens)
                 sensor_file_post[name] = {"timestamp": {}, "frame": {}}
                 sensor_frame_to_ts[name] = {}
@@ -160,6 +179,8 @@ class CarlaSceneDataset(BaseSceneDataset):
                     sensor_frame_to_ts[name][frame] = float(ts)
                     sensor_frames[name].append(frame)
                 sensor_frames[name] = sorted(sensor_frames[name])
+        else:
+            raise FileNotFoundError('Cannot find data folder {}'.format(sensor_data_folder))
         self.sensor_folders = sensor_folders
         self.sensor_file_post = sensor_file_post
         self.sensor_frame_to_ts = sensor_frame_to_ts
@@ -222,63 +243,11 @@ class CarlaSceneDataset(BaseSceneDataset):
     def _load_timestamp(self, frame, sensor, utime=False):
         return self.sensor_frame_to_ts[sensor][frame]
 
-    def _load_calibration(self, frame, sensor):
-        """
-        NOTE: for now calibration is ego-relative...will be fixed eventually
-
-        Therefore, for infra sensors, have to hack the reference since they
-        start in global coordinates
-        """
+    def _load_calibration(self, frame, sensor, *args, **kwargs):
         timestamp = None
-        filepath = self.get_sensor_file(frame, timestamp, sensor, "calib")
-        with open(filepath + ".txt", "r") as f:
-            lines = f.readlines()
-        assert len(lines) == 1
-        calib = calibration.read_calibration_from_line(lines[0])
-
-        # -- extra hack if infrastructure sensor -- calib is global_2_sensor
-        if "infrastructure" in sensor.lower():
-            """
-            infrastructure sensor must be put into ego's frame as follows
-
-            NOTE: this assumes that ego.origin is nominal origin standard
-
-            ego.position.vector := x_OR1_2_ego_in_OR1
-            ego.attitude.q      := q_OR1_2_ego
-            calib.origin.x      := x_OR1_2_sens_in_OR1
-            calib.origin.q      := q_OR1_2_sens
-
-            Thus, to get to the ego-relative frame is:
-            -- rotation
-            q_ego_2_OR1 = q_OR1_2_ego.conjugate()
-            q_ego_2_sens = q_OR1_2_sens * q_ego_2_OR1
-
-            -- translation
-            x_OR1_2_sens_in_ego = q_mult_vec(q_OR1_2_ego, x_OR1_2_sens_in_OR1)
-            x_ego_2_OR1_in_OR1 = -x_OR1_2_ego_in_OR1
-            x_ego_2_OR1_in_ego = q_mult_vec(q_OR1_2_ego, x_ego_2_OR1_in_OR1)
-            x_ego_2_sens_in_ego = x_OR1_2_sens_in_ego + x_ego_2_OR1_in_ego
-            """
-            raise NotImplementedError("Have not updated this for refchoc yet")
-            # -- get items
-            ego = self.get_ego(frame)
-            x_OR1_2_ego_in_OR1 = ego.position.vector
-            q_OR1_2_ego = ego.attitude.q
-            x_OR1_2_sens_in_OR1 = calib.reference.x
-            q_OR1_2_sens = calib.reference.q
-
-            # -- rotation
-            q_ego_2_OR1 = q_OR1_2_ego.conjugate()
-            q_ego_2_sens = q_OR1_2_sens * q_ego_2_OR1
-            # -- translation
-            x_OR1_2_sens_in_ego = q_mult_vec(q_OR1_2_ego, x_OR1_2_sens_in_OR1)
-            x_ego_2_OR1_in_OR1 = -x_OR1_2_ego_in_OR1
-            x_ego_2_OR1_in_ego = q_mult_vec(q_OR1_2_ego, x_ego_2_OR1_in_OR1)
-            x_ego_2_sens_in_ego = x_OR1_2_sens_in_ego + x_ego_2_OR1_in_ego
-
-            # -- new origin
-            pos = Vector(x_ego_2_sens_in_ego)
-            calib.origin = ReferenceFrame(x_ego_2_sens_in_ego, q_ego_2_sens)
+        filepath = self.get_sensor_file(frame, timestamp, sensor, "calib") + '.txt'
+        with open(filepath, 'r') as f:
+            calib = json.load(f, cls=calibration.CalibrationDecoder)
         return calib
 
     def _load_image(self, frame, sensor):
@@ -289,7 +258,7 @@ class CarlaSceneDataset(BaseSceneDataset):
         )
         assert os.path.exists(filepath), filepath
         try:
-            return imread(filepath)
+            return imread(filepath)[:,:,::-1]
         except TypeError as e:
             print(filepath)
             raise e
@@ -329,10 +298,9 @@ class CarlaSceneDataset(BaseSceneDataset):
     def _load_ego(self, frame):
         timestamp = None
         filepath = self.get_object_file(frame, timestamp, is_ego=True, is_global=True)
-        with open(filepath, "r") as f:
-            lines = f.readlines()
-        assert len(lines) == 1
-        return self.parse_label_line(lines[0])
+        with open(filepath, 'r') as f:
+            ego = json.load(f, cls=ObjectStateDecoder)
+        return ego
 
     def _load_objects(
         self,
@@ -376,10 +344,10 @@ class CarlaSceneDataset(BaseSceneDataset):
         objs = []
         for line in lines:
             line = line.rstrip()
-            objs.append(self.parse_label_line(line))
+            objs.append(json.loads(line, cls=ObjectStateDecoder))
         return np.asarray(objs)
 
     def _save_objects(self, frame, objects, folder, file):
-        data_strs = "\n".join([obj.format_as("avstack") for obj in objects])
+        data_strs = "\n".join([obj.encode() for obj in objects])
         with open(os.path.join(folder, file.format("txt")), "w") as f:
             f.write(data_strs)

@@ -123,7 +123,7 @@ def merge(a, b, path=None):
                     a[key] = b[key]  # setting value with b's value
             else:
                 a[key] = b[key]
-    except Exception as e:
+    except (KeyboardInterrupt, Exception) as e:
         print("Exception with:", key)
         raise e
     return a
