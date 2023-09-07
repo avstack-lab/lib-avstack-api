@@ -3,9 +3,9 @@ cameras:
   n_spawn: 0
   sensor_name: 'camera'
   name_prefix: 'CAM_INFRASTRUCTURE'
-  idx_spawn: 'in_order'
-  idx_spawn_list: [1, 10, 20, 5, 8, 15]
-  spawn_loc: 'anywhere'
+  seed: 10
+  idx_spawn: 'within-10-50'
+  idx_spawn_list: [1, 10, 20, 5, 8, 15, 18, 6, 17, 60, 43, 35, 28, 19, 54, 44, 2, 23, 22, 31]
   comm_range: 50
   position_uncertainty:
     x: 0.0001
@@ -31,10 +31,10 @@ cameras:
 depthcams:
   n_spawn: 0
   sensor_name: 'depthcam'
-  name_prefix: 'DEPTHCAM_INFRASTRUCTURE'
-  idx_spawn: 'in_order'
-  idx_spawn_list: [1, 10, 20, 5, 8, 15]
-  spawn_loc: 'anywhere'
+  name_prefix: 'CAM_DEPTH_INFRASTRUCTURE'
+  seed: 10
+  idx_spawn: 'within-10-50'
+  idx_spawn_list: [1, 10, 20, 5, 8, 15, 18, 6, 17, 60, 43, 35, 28, 19, 54, 44, 2, 23, 22, 31]
   comm_range: 50
   position_uncertainty:
     x: 0.0001
@@ -61,8 +61,9 @@ lidars:
   n_spawn: 0
   sensor_name: 'lidar'
   name_prefix: 'LIDAR_INFRASTRUCTURE'
-  idx_spawn: 'in_order'
-  idx_spawn_list: [1, 10, 20, 5, 8, 15]
+  seed: 10
+  idx_spawn: 'within-10-50'
+  idx_spawn_list: [1, 10, 20, 5, 8, 15, 18, 6, 17, 60, 43, 35, 28, 19, 54, 44, 2, 23, 22, 31]
   spawn_loc: 'anywhere'
   comm_range: 50
   save: false
@@ -94,7 +95,9 @@ radars:
   n_spawn: 0
   sensor_name: 'radar'
   name_prefix: 'RADAR_INFRASTRUCTURE'
-  idx_spawn: 'randint'
+  seed: 10
+  idx_spawn: 'within-10-50'
+  idx_spawn_list: [1, 10, 20, 5, 8, 15, 18, 6, 17, 60, 43, 35, 28, 19, 54, 44, 2, 23, 22, 31]
   spawn_loc: 'anywhere'
   comm_range: 30
   save: false
@@ -102,6 +105,12 @@ radars:
     x: 0.0001
     y: 0.0001
     z: 0.0001
+  attributes:
+    sensor_tick: 0.10
+    horizontal_fov: 30.0
+    vertical_fov: 30.0
+    points_per_second: 1500
+    range: 100.0
   transform:
     location:
       x: 0

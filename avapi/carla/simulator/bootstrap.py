@@ -252,7 +252,7 @@ def bootstrap_ego(
 
 
 def bootstrap_infrastructure(
-    world, cfg, config_file="./default_infrastructure.yml", save_folder=""
+    world, cfg, ego, config_file="./default_infrastructure.yml", save_folder=""
 ):
     if cfg is None:
         cfg = config.read_config(config_file)
@@ -261,12 +261,13 @@ def bootstrap_infrastructure(
     infra = InfrastructureManager(world)
 
     # -- make sensors
-    infra_sensors = {k: [] for k in cfg}
     n_infra_spawn = 0
     try:
         for k in cfg:
+            prev_spawns = []
             for idx in range(cfg[k]["n_spawn"]):
-                bootstrap_infra_sensor(infra, idx, cfg[k], save_folder=save_folder)
+                x_spawn = bootstrap_infra_sensor(infra, idx, prev_spawns, cfg[k], ego, save_folder=save_folder)
+                prev_spawns.append(x_spawn)
                 n_infra_spawn += 1
     except (KeyboardInterrupt, Exception) as e:
         infra.destroy()
@@ -275,13 +276,30 @@ def bootstrap_infrastructure(
     return infra
 
 
-def bootstrap_infra_sensor(infra, idx, cfg, save_folder):
+def bootstrap_infra_sensor(infra, idx, prev_spawns, cfg, ego, save_folder):
+    rng = random.Random(int(cfg['seed']) + idx)
+
     # -- find spawn point
     spawn_points = infra.map.get_spawn_points()
     if cfg["idx_spawn"] == "random":
         spawn_point = random.choice(spawn_points)
     elif cfg["idx_spawn"] == "in_order":
         spawn_point = spawn_points[cfg["idx_spawn_list"][idx]]
+    elif cfg["idx_spawn"].startswith("within"):
+        lower = int(cfg["idx_spawn"].split('-')[1])
+        upper = int(cfg["idx_spawn"].split('-')[2])
+        i_trial = 0
+        while True:
+            spawn_point = rng.choice(spawn_points)
+            x_spawn = utils.carla_location_to_numpy_vector(
+                spawn_point.location
+            )
+            if (lower <= np.linalg.norm(ego.get_ego_pose().position.x - x_spawn) <= upper) and \
+                (not any([np.all(x_spawn == x_prev) for x_prev in prev_spawns])):
+                break
+            i_trial += 1
+            if i_trial >= 100:
+                raise RuntimeError('Cannot find suitable spawn point')
     else:
         spawn_point = (
             spawn_points[cfg["idx_spawn"]]
@@ -331,7 +349,9 @@ def bootstrap_infra_sensor(infra, idx, cfg, save_folder):
     infra.add_sensor(
         source_name, sens, comm_range=cfg["comm_range"], pos_covar=pos_covar
     )
-
+    return utils.carla_location_to_numpy_vector(
+                spawn_point.location
+            )
 
 def bootstrap_ego_sensor(ego, ID, cfg, save_folder):
     # --- make sensor
@@ -483,11 +503,11 @@ def bootstrap_standard(world, traffic_manager, ego_stack, cfg, save_folder):
     #     raise e
     try:
         infra = bootstrap_infrastructure(
-            world, cfg["infrastructure"], save_folder=save_folder
+            world, cfg["infrastructure"], ego, save_folder=save_folder
         )
     except (KeyboardInterrupt, Exception) as e:
         ego.destroy()
-        for npc in npcs_set:
+        for npc in npcs:
             npc.destroy()
         raise e
 

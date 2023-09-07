@@ -19,10 +19,6 @@ ego:
   idx_spawn: 'randint'
   idx_vehicle: 'lincoln'
   idx_destination: null
-  # delta_destination:
-  #   forward: 100
-  #   right: 0
-  #   up: 0
   roaming: false
   autopilot: true
   respawn_on_done: true

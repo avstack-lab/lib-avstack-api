@@ -13,6 +13,7 @@ from queue import PriorityQueue
 
 import numpy as np
 from avstack.datastructs import DataManager
+from avstack.geometry import GlobalOrigin3D
 
 from . import recorder
 
@@ -241,7 +242,12 @@ class InfrastructureManager:
         self.actor = None  # for any method trying to use "parent" actor..
         self.sensors = {}
         self.covars = {}
+        self.comm_range = {}
         self.sensor_data_manager = DataManager(max_size=5)
+    
+    @property
+    def reference(self):
+        return GlobalOrigin3D
 
     def add_sensor(
         self, source_name, sens, comm_range=50, pos_covar=np.array([0, 0, 0])
@@ -249,6 +255,7 @@ class InfrastructureManager:
         assert source_name not in self.sensors
         self.sensors[source_name] = sens
         self.covars[source_name] = pos_covar
+        self.comm_range[source_name] = comm_range
 
     def initialize(self, t0, frame0):
         for sens in self.sensors.values():

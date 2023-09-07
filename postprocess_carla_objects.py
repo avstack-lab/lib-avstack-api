@@ -22,7 +22,7 @@ import avapi
 from avstack.environment.objects import Occlusion
 
 
-def main(args, frame_start=4, frame_end_trim=4, n_frames_max=10000):
+def main(args, frame_start=4, frame_end_trim=4, n_frames_max=10000, n_max_proc=2):
     CSM = avapi.carla.CarlaScenesManager(args.data_dir)
     print("Postprocessing carla dataset from {}{}".format(args.data_dir, "" if not args.multi else " with multiprocessing"))
     for i_scene, CDM in enumerate(CSM):
@@ -33,7 +33,7 @@ def main(args, frame_start=4, frame_end_trim=4, n_frames_max=10000):
         frames = frames[:max(1, min(n_frames_max, len(frames))-frame_end_trim)]
         frames_all = frames
         egos = {i:CDM.get_ego(i) for i in frames}
-        nproc = max(1, min(100, int(len(frames)/chunksize)))
+        nproc = max(1, min(n_max_proc, int(len(frames)/chunksize)))
         if with_multi:
             print('Getting global objects from all frames')
             with Pool(nproc) as p:
@@ -46,7 +46,7 @@ def main(args, frame_start=4, frame_end_trim=4, n_frames_max=10000):
 
         assert len(objects_global) == len(frames), "{} {}".format(len(objects_global, len(frames)))
         print('Putting objects into ego frame')
-        process_func_sensors(CDM, 'ego', egos, objects_global, frames, args.data_dir, with_multi=args.multi)
+        process_func_sensors(CDM, 'ego', egos, objects_global, frames, args.data_dir, with_multi=args.multi, n_max_proc=n_max_proc)
 
         print('Putting objects into sensor frames')
         for i_sens, (sens, frames) in enumerate(reversed(CDM.sensor_frames.items())):
@@ -54,14 +54,14 @@ def main(args, frame_start=4, frame_end_trim=4, n_frames_max=10000):
             frames_this = [frame for frame in frames if frame in frames_all]
             egos_this = {frame:egos[frame] for frame in frames_this}
             objects_global_this = {frame:objects_global[frame] for frame in frames_this}
-            process_func_sensors(CDM, sens, egos_this, objects_global_this, frames_this, args.data_dir, with_multi=args.multi)
+            process_func_sensors(CDM, sens, egos_this, objects_global_this, frames_this, args.data_dir, with_multi=args.multi, n_max_proc=n_max_proc)
 
 
 def get_obj_glob_by_frames(CDM, i_frame):
     return CDM.get_objects_global(i_frame)
 
 
-def process_func_sensors(CDM, sens, egos, objects_global, frames, data_dir, with_multi):
+def process_func_sensors(CDM, sens, egos, objects_global, frames, data_dir, with_multi, n_max_proc=10):
     """
     Post-process frames for a sensor
     """
@@ -71,7 +71,7 @@ def process_func_sensors(CDM, sens, egos, objects_global, frames, data_dir, with
     func = partial(process_func_frames, CDM, sens, obj_sens_folder)
 
     chunksize = 20
-    nproc = max(1, min(20, int(len(frames)/chunksize)))
+    nproc = max(1, min(n_max_proc, int(len(frames)/chunksize)))
     if with_multi:
         with Pool(nproc) as p:
             res = list(tqdm(p.istarmap(func,
@@ -99,7 +99,8 @@ def process_func_frames(CDM, sens, obj_sens_folder, ego, objects_global, i_frame
 
         # -- add ego object to objects if other sensor (e.g., infra)
         if ego.position.distance(calib.reference) > 5:
-            objects_global.append(ego)
+            # objects_global.append(ego)
+            pass
 
         # -- change to sensor origin
         objects_local = objects_global
