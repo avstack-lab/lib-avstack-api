@@ -6,7 +6,7 @@ display:
   enabled: false
 
 world:
-  n_random_vehicles: 300
+  n_random_vehicles: 75
   n_random_walkers: 0
 
 recorder:

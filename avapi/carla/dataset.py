@@ -10,7 +10,6 @@ CARLA dataset manager on AVstack conventions
 import glob
 import os
 from tqdm import tqdm
-import argparse
 
 import json
 import numpy as np
