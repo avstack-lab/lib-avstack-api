@@ -144,7 +144,7 @@ class BaseSceneDataset:
     def get_sensor_data_filepath(self, frame, sensor):
         sensor = self.get_sensor_name(sensor)
         return self._load_sensor_data_filepath(frame, sensor)
-    
+
     def get_image(self, frame, sensor=None):
         sensor = self.get_sensor_name(sensor)
         ts = self.get_timestamp(frame, sensor)
@@ -157,7 +157,7 @@ class BaseSceneDataset:
         return sensors.ImageData(
             ts, frame, data, calib, self.get_sensor_ID(cam_string), channel_order="rgb"
         )
-    
+
     def get_semseg_image(self, frame, sensor=None):
         if sensor is None:
             sensor = self.sensors["semseg"]
@@ -169,7 +169,7 @@ class BaseSceneDataset:
         return sensors.SemanticSegmentationImageData(
             ts, frame, data, calib, self.get_sensor_ID(cam_string)
         )
-    
+
     def get_depth_image(self, frame, sensor=None):
         if sensor is None:
             sensor = self.sensors["depth"]
@@ -286,10 +286,10 @@ class BaseSceneDataset:
 
     def _load_image(self, frame, camera):
         raise NotImplementedError
-    
+
     def _load_semseg_image(self, frame, camera):
         raise NotImplementedError
-    
+
     def _load_depth_image(self, frame, camera):
         raise NotImplementedError
 

@@ -92,18 +92,26 @@ class Sensor:
         if self.name == "lidar":
             self.calibration = calibration.LidarCalibration(self.reference)
         elif self.name == "radar":
-            fov_h = float(attr["horizontal_fov"]) * np.pi/180
-            fov_v = float(attr["vertical_fov"]) * np.pi/180
-            self.calibration = calibration.RadarCalibration(self.reference, fov_h, fov_v)
+            fov_h = float(attr["horizontal_fov"]) * np.pi / 180
+            fov_v = float(attr["vertical_fov"]) * np.pi / 180
+            self.calibration = calibration.RadarCalibration(
+                self.reference, fov_h, fov_v
+            )
         elif self.name == "camera":
             imsize = (h, w)
-            self.calibration = calibration.CameraCalibration(self.reference, self.P, imsize, channel_order="rgb")
+            self.calibration = calibration.CameraCalibration(
+                self.reference, self.P, imsize, channel_order="rgb"
+            )
         elif self.name == "semseg_camera":
             imsize = (h, w)
-            self.calibration = calibration.SemanticSegmentationCalibration(self.reference, self.P, imsize, channel_order="rgb")
+            self.calibration = calibration.SemanticSegmentationCalibration(
+                self.reference, self.P, imsize, channel_order="rgb"
+            )
         elif self.name == "depth_camera":
             imsize = (h, w)
-            self.calibration = calibration.DepthCameraCalibration(self.reference, self.P, imsize, channel_order="rgb")
+            self.calibration = calibration.DepthCameraCalibration(
+                self.reference, self.P, imsize, channel_order="rgb"
+            )
         else:
             raise NotImplementedError(self.name)
 

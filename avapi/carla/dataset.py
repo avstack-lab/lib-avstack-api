@@ -8,14 +8,14 @@
 CARLA dataset manager on AVstack conventions
 """
 import glob
-import os
-from tqdm import tqdm
-
 import json
+import os
+
 import numpy as np
 from avstack import calibration
 from avstack.environment import ObjectStateDecoder
 from cv2 import imread
+from tqdm import tqdm
 
 from .._dataset import BaseSceneDataset, BaseSceneManager
 
@@ -34,23 +34,30 @@ def get_splits_scenes(data_dir, modval=4, seed=1):
 
 def run_dataset_postprocessing(data_dir):
     """Run postprocessing to optimize dataset for usage
-    
+
     Includes:
         - saving object representations in sensor frames
     """
     CSM = CarlaScenesManager(data_dir=data_dir)
-    obj_dir = os.path.join(CSM.data_dir, 'objects_sensor')
+    obj_dir = os.path.join(CSM.data_dir, "objects_sensor")
     for i_scene, CDM in enumerate(CSM):
-        print('Running scene {} of {}'.format(i_scene, len(CSM)))
+        print("Running scene {} of {}".format(i_scene, len(CSM)))
         for frame in tqdm(CDM.frames):
             objects_global = CDM.get_objects_global(frame=frame)
             for sensor in CDM.sensor_IDs:
                 calib = CDM.get_calibration(frame=frame, sensor=sensor)
-                object_string = "\n".join([obj.change_reference(calib.reference, inplace=False).encode() for obj in objects_global])
-                global_file = CSM.get_object_file(frame=frame, timestamp=None, is_ego=False, is_global=True)
-                file = os.path.join(obj_dir, sensor, global_file.split('/')[-1])
+                object_string = "\n".join(
+                    [
+                        obj.change_reference(calib.reference, inplace=False).encode()
+                        for obj in objects_global
+                    ]
+                )
+                global_file = CSM.get_object_file(
+                    frame=frame, timestamp=None, is_ego=False, is_global=True
+                )
+                file = os.path.join(obj_dir, sensor, global_file.split("/")[-1])
                 os.makedirs(os.path.dirname(file), exist_ok=True)
-                with open(file, 'w') as f:
+                with open(file, "w") as f:
                     f.write(object_string)
 
 
@@ -186,7 +193,9 @@ class CarlaSceneDataset(BaseSceneDataset):
                     sensor_frames[name].append(frame)
                 sensor_frames[name] = sorted(sensor_frames[name])
         else:
-            raise FileNotFoundError('Cannot find data folder {}'.format(sensor_data_folder))
+            raise FileNotFoundError(
+                "Cannot find data folder {}".format(sensor_data_folder)
+            )
         self.sensor_folders = sensor_folders
         self.sensor_file_post = sensor_file_post
         self.sensor_frame_to_ts = sensor_frame_to_ts
@@ -251,8 +260,8 @@ class CarlaSceneDataset(BaseSceneDataset):
 
     def _load_calibration(self, frame, sensor, *args, **kwargs):
         timestamp = None
-        filepath = self.get_sensor_file(frame, timestamp, sensor, "calib") + '.txt'
-        with open(filepath, 'r') as f:
+        filepath = self.get_sensor_file(frame, timestamp, sensor, "calib") + ".txt"
+        with open(filepath, "r") as f:
             calib = json.load(f, cls=calibration.CalibrationDecoder)
         return calib
 
@@ -268,13 +277,13 @@ class CarlaSceneDataset(BaseSceneDataset):
         except TypeError as e:
             print(filepath)
             raise e
-        
+
     def _load_image(self, frame, sensor):
         return self._load_im_general(frame, sensor)
 
     def _load_semseg_image(self, frame, sensor):
         return self._load_im_general(frame, sensor)
-    
+
     def _load_depth_image(self, frame, sensor):
         return self._load_im_general(frame, sensor)
 
@@ -296,7 +305,7 @@ class CarlaSceneDataset(BaseSceneDataset):
             return pcd[pcd[:, 0] > 0, :]  # assumes z is forward....
         else:
             return pcd
-        
+
     def _load_radar(self, frame, sensor):
         timestamp = None
         filepath = (
@@ -310,7 +319,7 @@ class CarlaSceneDataset(BaseSceneDataset):
     def _load_ego(self, frame):
         timestamp = None
         filepath = self.get_object_file(frame, timestamp, is_ego=True, is_global=True)
-        with open(filepath, 'r') as f:
+        with open(filepath, "r") as f:
             ego = json.load(f, cls=ObjectStateDecoder)
         return ego
 

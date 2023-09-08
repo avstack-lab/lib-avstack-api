@@ -266,7 +266,9 @@ def bootstrap_infrastructure(
         for k in cfg:
             prev_spawns = []
             for idx in range(cfg[k]["n_spawn"]):
-                x_spawn = bootstrap_infra_sensor(infra, idx, prev_spawns, cfg[k], ego, save_folder=save_folder)
+                x_spawn = bootstrap_infra_sensor(
+                    infra, idx, prev_spawns, cfg[k], ego, save_folder=save_folder
+                )
                 prev_spawns.append(x_spawn)
                 n_infra_spawn += 1
     except (KeyboardInterrupt, Exception) as e:
@@ -277,7 +279,7 @@ def bootstrap_infrastructure(
 
 
 def bootstrap_infra_sensor(infra, idx, prev_spawns, cfg, ego, save_folder):
-    rng = random.Random(int(cfg['seed']) + idx)
+    rng = random.Random(int(cfg["seed"]) + idx)
 
     # -- find spawn point
     spawn_points = infra.map.get_spawn_points()
@@ -286,20 +288,21 @@ def bootstrap_infra_sensor(infra, idx, prev_spawns, cfg, ego, save_folder):
     elif cfg["idx_spawn"] == "in_order":
         spawn_point = spawn_points[cfg["idx_spawn_list"][idx]]
     elif cfg["idx_spawn"].startswith("within"):
-        lower = int(cfg["idx_spawn"].split('-')[1])
-        upper = int(cfg["idx_spawn"].split('-')[2])
+        lower = int(cfg["idx_spawn"].split("-")[1])
+        upper = int(cfg["idx_spawn"].split("-")[2])
         i_trial = 0
         while True:
             spawn_point = rng.choice(spawn_points)
-            x_spawn = utils.carla_location_to_numpy_vector(
-                spawn_point.location
-            )
-            if (lower <= np.linalg.norm(ego.get_ego_pose().position.x - x_spawn) <= upper) and \
-                (not any([np.all(x_spawn == x_prev) for x_prev in prev_spawns])):
+            x_spawn = utils.carla_location_to_numpy_vector(spawn_point.location)
+            if (
+                lower
+                <= np.linalg.norm(ego.get_ego_pose().position.x - x_spawn)
+                <= upper
+            ) and (not any([np.all(x_spawn == x_prev) for x_prev in prev_spawns])):
                 break
             i_trial += 1
             if i_trial >= 100:
-                raise RuntimeError('Cannot find suitable spawn point')
+                raise RuntimeError("Cannot find suitable spawn point")
     else:
         spawn_point = (
             spawn_points[cfg["idx_spawn"]]
@@ -349,9 +352,8 @@ def bootstrap_infra_sensor(infra, idx, prev_spawns, cfg, ego, save_folder):
     infra.add_sensor(
         source_name, sens, comm_range=cfg["comm_range"], pos_covar=pos_covar
     )
-    return utils.carla_location_to_numpy_vector(
-                spawn_point.location
-            )
+    return utils.carla_location_to_numpy_vector(spawn_point.location)
+
 
 def bootstrap_ego_sensor(ego, ID, cfg, save_folder):
     # --- make sensor

@@ -20,7 +20,13 @@ from . import recorder
 
 class CarlaManager:
     def __init__(
-        self, world, traffic_manager, cfg, record_truth=True, record_folder="sim-results/", buffer_dump=3,
+        self,
+        world,
+        traffic_manager,
+        cfg,
+        record_truth=True,
+        record_folder="sim-results/",
+        buffer_dump=3,
     ):
         self._world = world
         self.traffic_manager = traffic_manager
@@ -112,7 +118,7 @@ class CarlaManager:
         self.infrastructure.destroy()
 
     def restart(self, save_folder=""):
-        from .bootstrap import bootstrap_npcs
+        from .bootstrap import bootstrap_infrastructure, bootstrap_npcs
 
         time.sleep(self.buffer_dump)  # allow time for buffers to dump...
         if self.recorder is not None:
@@ -131,9 +137,14 @@ class CarlaManager:
         self.ego.restart(t0=self.t0, frame0=self.frame0, save_folder=save_folder)
 
         # -- reset NPCs
-        self.npcs, npc_cfgs = bootstrap_npcs(self._world, self.cfg['world'])
+        self.npcs, npc_cfgs = bootstrap_npcs(self._world, self.cfg["world"])
         self.schedule_npc_events(npc_cfgs)
-        time.sleep(1)
+
+        # -- reset infrastructure sensors
+        self.infrastructure = bootstrap_infrastructure(
+            self._world, self.ego, self.cfg["infrastructure"], save_folder=save_folder
+        )
+        time.sleep(2)
 
 
 class NpcManager:
@@ -244,7 +255,7 @@ class InfrastructureManager:
         self.covars = {}
         self.comm_range = {}
         self.sensor_data_manager = DataManager(max_size=5)
-    
+
     @property
     def reference(self):
         return GlobalOrigin3D
