@@ -142,7 +142,7 @@ class CarlaManager:
 
         # -- reset infrastructure sensors
         self.infrastructure = bootstrap_infrastructure(
-            self._world, self.ego, self.cfg["infrastructure"], save_folder=save_folder
+            self._world, self.cfg["infrastructure"], self.ego, save_folder=save_folder
         )
         time.sleep(2)
 

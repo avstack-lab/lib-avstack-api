@@ -96,7 +96,7 @@ def _spawn_agents_placed(world, blueprints, spawn_points, placed_vehicles):
 
             # -- get object spawn point
             if cfg["idx_spawn"] in [None, "randint"]:
-                spawn_point = np.random.choice(spawn_points)
+                spawn_point = random.choice(spawn_points)
             else:
                 spawn_point = spawn_points[cfg["idx_spawn"]]
             if cfg["delta_spawn"]:
@@ -319,10 +319,13 @@ def bootstrap_infra_sensor(infra, idx, prev_spawns, cfg, ego, save_folder):
         )
     )
     x_spawn[2] -= spawn_point.location.z  # only allow for the manual z component
+    if cfg["add_random_yaw"]:
+        random_yaw_1 = 0 if random.random() < 0.5 else np.pi  # add a random yaw flip 
+        random_yaw_2 = np.random.randn() * np.pi/8  # add small amount of random yaw
     q_spawn = utils.carla_rotation_to_quaternion(
         carla.Rotation(
             pitch=cfg["transform"]["rotation"]["pitch"],
-            yaw=cfg["transform"]["rotation"]["yaw"],
+            yaw=cfg["transform"]["rotation"]["yaw"] + random_yaw_1 + random_yaw_2,
             roll=cfg["transform"]["rotation"]["roll"],
         )
     ) * utils.carla_rotation_to_quaternion(spawn_point.rotation)

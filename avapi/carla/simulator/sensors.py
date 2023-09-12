@@ -112,6 +112,10 @@ class Sensor:
             self.calibration = calibration.DepthCameraCalibration(
                 self.reference, self.P, imsize, channel_order="rgb"
             )
+        elif self.name == "gps":
+            self.calibration = calibration.GpsCalibration(self.reference)
+        elif self.name == "imu":
+            self.calibration = calibration.ImuCalibration(self.reference)
         else:
             raise NotImplementedError(self.name)
 

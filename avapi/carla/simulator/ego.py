@@ -55,7 +55,7 @@ class CarlaEgoActor:
     def _spawn_actor(self):
         # -- vehicle blueprint
         if self.cfg["idx_vehicle"] in ["random", "randint"]:
-            bp = np.random.choice(self.vehicle_bps)
+            bp = random.choice(self.vehicle_bps)
         elif isinstance(self.cfg["idx_vehicle"], int):
             bp = self.vehicle_bps[self.cfg["idx_vehicle"]]
         elif (
@@ -68,7 +68,7 @@ class CarlaEgoActor:
 
         # -- spawn point
         if self.cfg["idx_spawn"] in ["random", "randint"]:
-            tf = np.random.choice(self.spawn_points)
+            tf = random.choice(self.spawn_points)
         elif isinstance(self.cfg["idx_spawn"], int):
             tf = self.spawn_points[self.cfg["idx_spawn"]]
         else:
@@ -81,7 +81,6 @@ class CarlaEgoActor:
         while i < n_att:
             self.actor = self.world.try_spawn_actor(bp, tf)
             if self.actor is None:
-                loc = np.array([tf.location.x, tf.location.y, tf.location.z])
                 fv = tf.rotation.get_forward_vector()
                 tf.location.x += d_inc * fv.x
                 tf.location.y += d_inc * fv.y
@@ -143,6 +142,9 @@ class CarlaEgoActor:
                     "Cannot set autopilot unless algorithms are passthrough"
                 )
             self.actor.set_autopilot(True)
+
+        # -- print starting information
+        print("Spawned ego actor at {}".format(ego_init.position.x))
 
     def initialize(self, t0, frame0):
         self.t0 = t0
@@ -333,7 +335,7 @@ class CarlaEgoActor:
         return done, debug
 
     def random_spawn(self):
-        return np.random.choice(self.spawn_points)
+        return random.choice(self.spawn_points)
 
     def draw_waypoint(self, plan):
         wpt = plan.top()[1]

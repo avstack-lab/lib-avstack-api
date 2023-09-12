@@ -258,6 +258,9 @@ class BaseSceneDataset:
     def get_objects_global(self, frame, max_dist=None, **kwargs):
         return self._load_objects_global(frame, **kwargs)
 
+    def get_number_of_objects(self, frame, **kwargs):
+        return self._number_objects_from_file(frame, **kwargs)
+
     def get_objects_from_file(self, fname, whitelist_types, max_dist=None):
         return self._load_objects_from_file(fname, whitelist_types, max_dist=max_dist)
 
@@ -786,6 +789,11 @@ class _nuBaseDataset(BaseSceneDataset):
                 obj.change_reference(reference, inplace=True)
                 objects.append(obj)
         return np.array(objects)
+
+    def _number_objects_from_file(self, frame, **kwargs):
+        sensor_data = self._get_sensor_record(frame, "LIDAR_TOP")
+        _, boxes, _ = self.nuX.get_sample_data(sensor_data["token"])
+        return len(boxes)
 
     # def _get_anns_metadata(self, sample_data_token):
     #     try:

@@ -6,7 +6,7 @@ attributes:
   channels: 32
   rotation_frequency: 20  # should be the same as simulation rate!
   range: 70.0
-  points_per_second: 1120000  # 56,000*20 - note this scales with rot freq
+  points_per_second: 1120000  # 1750 * 32 * 20 - note this scales with rot freq
   upper_fov: 2.4  # degrees -- to mimic Waymo dataset
   lower_fov: -17.6  # degrees -- to mimic Waymo dataset
 noise: {}

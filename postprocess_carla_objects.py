@@ -22,7 +22,7 @@ import avapi
 from avstack.environment.objects import Occlusion
 
 
-def main(args, frame_start=4, frame_end_trim=4, n_frames_max=10000, n_max_proc=2):
+def main(args, frame_start=4, frame_end_trim=4, n_frames_max=10000, n_max_proc=4):
     CSM = avapi.carla.CarlaScenesManager(args.data_dir)
     print("Postprocessing carla dataset from {}{}".format(args.data_dir, "" if not args.multi else " with multiprocessing"))
     for i_scene, CDM in enumerate(CSM):
@@ -54,7 +54,8 @@ def main(args, frame_start=4, frame_end_trim=4, n_frames_max=10000, n_max_proc=2
             frames_this = [frame for frame in frames if frame in frames_all]
             egos_this = {frame:egos[frame] for frame in frames_this}
             objects_global_this = {frame:objects_global[frame] for frame in frames_this}
-            process_func_sensors(CDM, sens, egos_this, objects_global_this, frames_this, args.data_dir, with_multi=args.multi, n_max_proc=n_max_proc)
+            with_multi = False  # args.multi
+            process_func_sensors(CDM, sens, egos_this, objects_global_this, frames_this, args.data_dir, with_multi=with_multi, n_max_proc=n_max_proc)
 
 
 def get_obj_glob_by_frames(CDM, i_frame):

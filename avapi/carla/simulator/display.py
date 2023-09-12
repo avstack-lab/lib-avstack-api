@@ -427,8 +427,7 @@ class CameraDisplayManager(object):
             array = np.reshape(array, (image.height, image.width, 4))
             array = array[:, :, :3]
             # -- add object boxes
-            if self.object_representation_name == "off":
-                array = array[:, :, ::-1]  # HACK for now
+            array = array[:, :, ::-1]  # HACK for now
             array = self.add_objects_to_image(array)
             # -- scale the image to fit the HUD, preserving aspect and padding
             if array.shape != self.hud.dim:

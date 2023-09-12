@@ -359,6 +359,13 @@ class CarlaSceneDataset(BaseSceneDataset):
             ]
         )
 
+    def _number_objects_from_file(self, frame, **kwargs):
+        timestamp = None
+        filepath = self.get_object_file(frame, timestamp, is_ego=False, is_global=True)
+        with open(filepath, "r") as f:
+            lines = f.readlines()
+        return len(lines)
+
     def _read_objects(self, filepath):
         with open(filepath, "r") as f:
             lines = f.readlines()

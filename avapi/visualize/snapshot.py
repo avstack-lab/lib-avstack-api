@@ -106,7 +106,10 @@ def show_image_with_boxes(
     addbox=[],
 ):
     """Show image with bounding boxes"""
-    img1 = np.copy(img.rgb_image)
+    try:
+        img1 = np.copy(img.rgb_image)
+    except AttributeError:
+        img1 = np.copy(img.grayscale_image)
     # if img.calibration.channel_order == "bgr":
     #     img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2RGB)
 
