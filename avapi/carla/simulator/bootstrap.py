@@ -246,7 +246,6 @@ def bootstrap_ego(
         raise e
 
     # --- make other sensors
-    pass
 
     return ego
 
@@ -320,8 +319,8 @@ def bootstrap_infra_sensor(infra, idx, prev_spawns, cfg, ego, save_folder):
     )
     x_spawn[2] -= spawn_point.location.z  # only allow for the manual z component
     if cfg["add_random_yaw"]:
-        random_yaw_1 = 0 if random.random() < 0.5 else np.pi  # add a random yaw flip 
-        random_yaw_2 = np.random.randn() * np.pi/8  # add small amount of random yaw
+        random_yaw_1 = 0 if random.random() < 0.5 else np.pi  # add a random yaw flip
+        random_yaw_2 = np.random.randn() * np.pi / 8  # add small amount of random yaw
     q_spawn = utils.carla_rotation_to_quaternion(
         carla.Rotation(
             pitch=cfg["transform"]["rotation"]["pitch"],

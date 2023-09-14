@@ -1,5 +1,5 @@
 import pickle
-from copy import copy, deepcopy
+from copy import deepcopy
 
 import numpy as np
 from avstack.datastructs import DataContainer, DataManager

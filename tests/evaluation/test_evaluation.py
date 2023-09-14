@@ -6,7 +6,7 @@
 
 import logging
 import os
-from copy import copy, deepcopy
+from copy import deepcopy
 
 import numpy as np
 from avstack.datastructs import DataContainer, DataManager
@@ -147,8 +147,8 @@ def test_eval_confusion_by_class():
         truths=dets,
     )
     assert np.all(res.confusion == np.array([[len(dets), 0], [0, 0]]))
-    for k, conf in res.confusion_by_class.items()
-        assert np.all(conf == np.array([[conf[0,0], 0], [0, 0]]))
+    for k, conf in res.confusion_by_class.items():
+        assert np.all(conf == np.array([[conf[0, 0], 0], [0, 0]]))
 
 
 def test_eval_average_precision():

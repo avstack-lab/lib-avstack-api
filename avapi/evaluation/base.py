@@ -12,16 +12,22 @@ from multiprocessing import Pool
 
 import numpy as np
 from avstack.datastructs import OneEdgeBipartiteGraph
-from avstack.modules.assignment import gnn_single_frame_assign, greedy_assignment, build_A_from_iou
+from avstack.modules.assignment import (
+    build_A_from_iou,
+    gnn_single_frame_assign,
+    greedy_assignment,
+)
 from tqdm import tqdm
 
 from avapi.utils import get_indices_in_folder
+
 from .metrics import precision, recall
 
 
 # =============================================
 # Result Managers
 # =============================================
+
 
 def color_from_object_type(det_type, no_white=False, no_black=False):
     if det_type == "detection":
@@ -175,7 +181,7 @@ class ResultManager:
         radius=None,
         no_white=False,
         no_black=False,
-        assign_algorithm='greedy',  # greedy is much faster
+        assign_algorithm="greedy",  # greedy is much faster
     ):
         """ """
         self.idx = idx
@@ -222,8 +228,8 @@ class ResultManager:
         Recall: tp / (tp + fn)
         """
         if by_class:
-            prec = {k:precision(c) for k, c in self.confusion_by_class.items()}
-            rec = {k:recall(c) for k, c in self.confusion_by_class.items()}
+            prec = {k: precision(c) for k, c in self.confusion_by_class.items()}
+            rec = {k: recall(c) for k, c in self.confusion_by_class.items()}
         else:
             prec = precision(self.confusion)
             rec = recall(self.confusion)
@@ -246,7 +252,12 @@ class ResultManager:
 
         # Run assignment
         assignment, A = associate_detections_truths(
-            self.detections, self.truths_all, self.metric, threshold, self.radius, self.assign_algorithm,
+            self.detections,
+            self.truths_all,
+            self.metric,
+            threshold,
+            self.radius,
+            self.assign_algorithm,
         )
         self.A = A
 
@@ -275,12 +286,16 @@ class ResultManager:
 
         # Make confusion matrix
         self.confusion = np.array([[len(assignment), len(idx_FN)], [len(idx_FP), 0]])
-        
+
         # Make confusion matrix by class assignment
         self.confusion_by_class = {}
-        obj_types = {obj.obj_type for obj in self.truths}.union({obj.obj_type for obj in self.detections})
+        obj_types = {obj.obj_type for obj in self.truths}.union(
+            {obj.obj_type for obj in self.detections}
+        )
         for obj_type in obj_types:
-            n_fp = len([idx for idx in idx_FP if self.detections[idx].obj_type == obj_type])
+            n_fp = len(
+                [idx for idx in idx_FP if self.detections[idx].obj_type == obj_type]
+            )
             n_fn = len([idx for idx in idx_FN if self.truths[idx].obj_type == obj_type])
             n_tp = 0
             for r, cw in assigns.items():
@@ -292,7 +307,7 @@ class ResultManager:
                         n_fp += 1
                 elif self.truths[c].obj_type == obj_type:
                     n_fn += 1
-            self.confusion_by_class[obj_type] = np.array([[n_tp, n_fn],[n_fp, 0]])
+            self.confusion_by_class[obj_type] = np.array([[n_tp, n_fn], [n_fp, 0]])
 
         # Store map from index to what it is
         self.result["false_positives"] = idx_FP
@@ -486,7 +501,14 @@ class ResultManager:
                 raise NotImplementedError
 
 
-def associate_detections_truths(detections, truths, metric="3D_IoU", threshold=0.1, radius=None, assign_algorithm='gnn'):
+def associate_detections_truths(
+    detections,
+    truths,
+    metric="3D_IoU",
+    threshold=0.1,
+    radius=None,
+    assign_algorithm="gnn",
+):
     """
     Determine associations, false positives, and false negatives
 
@@ -522,16 +544,16 @@ def associate_detections_truths(detections, truths, metric="3D_IoU", threshold=0
             A = build_A_from_iou(detections, truths)
         else:
             raise NotImplementedError(metric)
-        
-    if assign_algorithm == 'gnn':
-        assignment = gnn_single_frame_assign(A, algorithm="JVC",
-            cost_threshold=threshold, all_assigned=False)
-    elif assign_algorithm == 'greedy':
+
+    if assign_algorithm == "gnn":
+        assignment = gnn_single_frame_assign(
+            A, algorithm="JVC", cost_threshold=threshold, all_assigned=False
+        )
+    elif assign_algorithm == "greedy":
         assignment = greedy_assignment(A, threshold=threshold)
     else:
         raise NotImplementedError(assign_algorithm)
     return assignment, A
-
 
 
 # def _build_A_matrix(detections, truths, metric, radius):

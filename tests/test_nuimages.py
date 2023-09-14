@@ -4,8 +4,6 @@
 import logging
 import os
 
-import numpy as np
-
 from avapi.nuimages import nuImagesDataset
 
 

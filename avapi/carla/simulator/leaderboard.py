@@ -124,4 +124,3 @@ class CarlaLeaderboardAgent(AutonomousAgent):
         which can be overriden by your agent, in cases where you need a
         cleanup. As an example, you can make use of this function to
         erase any unwanted memory of a network"""
-        pass

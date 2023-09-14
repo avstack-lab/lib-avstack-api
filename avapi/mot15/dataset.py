@@ -1,16 +1,12 @@
 import configparser
 import glob
 import os
-import re
-import shutil
-from datetime import datetime
 
 import numpy as np
 from avstack import calibration
 from avstack.environment.objects import ObjectState
 from avstack.geometry import Box2D, GlobalOrigin3D, Position
 from cv2 import imread
-from tqdm import tqdm
 
 from .._dataset import BaseSceneDataset, BaseSceneManager
 

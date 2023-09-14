@@ -49,7 +49,6 @@ def show_lidar_on_image(
     pc, img, boxes=None, show=True, inline=True, colormethod="depth", return_image=False
 ):
     """Project LiDAR points to image"""
-    import matplotlib.pyplot as plt
 
     img1 = np.copy(img.data)
     if img.calibration.channel_order == "bgr":

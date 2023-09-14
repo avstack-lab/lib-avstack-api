@@ -13,7 +13,7 @@ from avstack.modules.assignment import gnn_single_frame_assign
 from trackeval import Evaluator as TrackEvaluator
 from trackeval import _timing
 from trackeval.datasets._base_dataset import _BaseDataset as _TrkEvalBaseDataset
-from trackeval.metrics import CLEAR, HOTA, VACE, IDEucl, TrackMAP
+from trackeval.metrics import CLEAR, HOTA, VACE, IDEucl
 from trackeval.utils import get_code_path
 from trackeval.utils import init_config as init_track_dataset_config
 

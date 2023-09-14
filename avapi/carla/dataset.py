@@ -82,7 +82,9 @@ class CarlaScenesManager(BaseSceneManager):
         self.split = split
         self.verbose = verbose
         self.scenes = sorted(next(os.walk(data_dir))[1])
-        self.splits_scenes = self.make_splits_scenes(seed=1, frac_train=0.7, frac_val=0.3)
+        self.splits_scenes = self.make_splits_scenes(
+            seed=1, frac_train=0.7, frac_val=0.3
+        )
 
     def get_scene_dataset_by_index(self, scene_idx):
         return CarlaSceneDataset(self.data_dir, self.scenes[scene_idx])

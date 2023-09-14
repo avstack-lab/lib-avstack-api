@@ -8,7 +8,6 @@
 
 """
 
-import hashlib
 import json
 import os
 import random
@@ -62,9 +61,9 @@ class BaseSceneManager:
         3:1 split using mod 4
         """
         rng = random.Random(seed)
-        
+
         # first two we alternate just to have one
-        splits_scenes = {"train": [], "val": [], "test":[]}
+        splits_scenes = {"train": [], "val": [], "test": []}
         for i, scene in enumerate(self.scenes):
             if i == 0:
                 splits_scenes["train"].append(scene)
@@ -74,7 +73,7 @@ class BaseSceneManager:
                 rv = rng.random()
                 if rv < frac_train:
                     splits_scenes["train"].append(scene)
-                elif rv < (frac_train+frac_val):
+                elif rv < (frac_train + frac_val):
                     splits_scenes["val"].append(scene)
                 else:
                     splits_scenes["test"].append(scene)

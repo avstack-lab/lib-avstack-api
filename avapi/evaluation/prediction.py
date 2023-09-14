@@ -1,5 +1,4 @@
 import bisect
-import heapq
 import os
 
 import numpy as np

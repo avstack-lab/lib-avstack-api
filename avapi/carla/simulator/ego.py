@@ -15,22 +15,13 @@ import numpy as np
 from avstack import GroundTruthInformation
 from avstack.datastructs import DataManager
 from avstack.environment import EnvironmentState
-from avstack.geometry import (
-    Acceleration,
-    AngularVelocity,
-    Attitude,
-    GlobalOrigin3D,
-    Pose,
-    Position,
-    ReferenceFrame,
-    Velocity,
-)
+from avstack.geometry import Attitude, GlobalOrigin3D, Pose, Position, ReferenceFrame
 from avstack.geometry import transformations as tforms
 from avstack.modules.perception import detections
 from carla import Location, VehicleControl
 from pygame.locals import K_DOWN, K_LEFT, K_RIGHT, K_SPACE, K_UP, K_q
 
-from avapi.carla.simulator import sensors, utils
+from avapi.carla.simulator import utils
 
 
 class CarlaEgoActor:

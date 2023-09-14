@@ -10,8 +10,6 @@
 import logging
 import os
 
-import numpy as np
-
 from avapi.kitti import KittiObjectDataset as KOD
 from avapi.kitti import KittiRawDataset as KRD
 

@@ -14,7 +14,7 @@ except ModuleNotFoundError as e:
     print("Cannot find ipywidgets...cannot run visualizations")
 
 from avstack.environment.objects import VehicleState
-from avstack.geometry import StandardCoordinates, bbox
+from avstack.geometry import bbox
 from avstack.modules.perception.detections import BoxDetection
 
 from avapi.evaluation import ResultManager, color_from_object_type
@@ -51,11 +51,9 @@ class ObjectVideoReplay(_VideoReplay):
 
     def add_objects_from_track_results(self, track_results):
         """Add both truths and tracks from track result class"""
-        pass
 
     def add_objects_from_percep_results(self, percep_results):
         """Add both detections and truths from percep result class"""
-        pass
 
     def add_object(self, object, color, identifier):
         """Add objects of a particular type"""

@@ -10,8 +10,6 @@
 import logging
 import os
 
-import numpy as np
-
 from avapi.nuscenes import nuScenesManager
 
 
