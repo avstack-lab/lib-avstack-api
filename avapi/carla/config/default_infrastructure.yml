@@ -79,9 +79,9 @@ lidars:
     sensor_tick: 0.5  # slower for infrastructure
     channels: 64
     rotation_frequency: 20  # should be the same as simulation rate!
-    range: 70.0
+    range: 150.0
     points_per_second: 2120000  # 56,000*20*2 - note this scales rot freq
-    upper_fov: 20  # degrees
+    upper_fov: 30  # degrees
     lower_fov: -25  # degrees
     horizontal_fov: 90
   transform:

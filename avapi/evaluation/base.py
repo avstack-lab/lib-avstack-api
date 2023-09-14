@@ -6,18 +6,22 @@
 
 import glob
 import os
-from copy import copy, deepcopy
+from copy import deepcopy
 from functools import partial
 from multiprocessing import Pool
 
 import numpy as np
 from avstack.datastructs import OneEdgeBipartiteGraph
-from avstack.maskfilters import box_in_fov
-from avstack.modules.assignment import gnn_single_frame_assign
+from avstack.modules.assignment import gnn_single_frame_assign, greedy_assignment, build_A_from_iou
 from tqdm import tqdm
 
 from avapi.utils import get_indices_in_folder
+from .metrics import precision, recall
 
+
+# =============================================
+# Result Managers
+# =============================================
 
 def color_from_object_type(det_type, no_white=False, no_black=False):
     if det_type == "detection":
@@ -167,9 +171,11 @@ class ResultManager:
         truths,
         truths_dontcare=[],
         metric="3D_IoU",
+        threshold=0.3,
         radius=None,
         no_white=False,
         no_black=False,
+        assign_algorithm='greedy',  # greedy is much faster
     ):
         """ """
         self.idx = idx
@@ -182,7 +188,9 @@ class ResultManager:
         self.colors = {"detections": [], "truths": []}
         self.no_white = no_white
         self.no_black = no_black
-        self.run_assignment()
+        self.assign_algorithm = assign_algorithm
+        self.threshold = threshold
+        self.run_assignment(threshold=threshold)
 
     @property
     def tracks(self):
@@ -208,7 +216,20 @@ class ResultManager:
         """
         return self.confusion
 
-    def run_assignment(self):
+    def get_prec_rec(self, by_class=True):
+        """
+        Precision: tp / (tp + fp)
+        Recall: tp / (tp + fn)
+        """
+        if by_class:
+            prec = {k:precision(c) for k, c in self.confusion_by_class.items()}
+            rec = {k:recall(c) for k, c in self.confusion_by_class.items()}
+        else:
+            prec = precision(self.confusion)
+            rec = recall(self.confusion)
+        return prec, rec
+
+    def run_assignment(self, threshold):
         # Initialize variables
         self.result = {
             "false_positives": [],
@@ -224,9 +245,8 @@ class ResultManager:
         ), "All truth origins must be the same for now"
 
         # Run assignment
-        dets = deepcopy(self.detections)
         assignment, A = associate_detections_truths(
-            dets, self.truths_all, self.metric, self.radius
+            self.detections, self.truths_all, self.metric, threshold, self.radius, self.assign_algorithm,
         )
         self.A = A
 
@@ -255,6 +275,24 @@ class ResultManager:
 
         # Make confusion matrix
         self.confusion = np.array([[len(assignment), len(idx_FN)], [len(idx_FP), 0]])
+        
+        # Make confusion matrix by class assignment
+        self.confusion_by_class = {}
+        obj_types = {obj.obj_type for obj in self.truths}.union({obj.obj_type for obj in self.detections})
+        for obj_type in obj_types:
+            n_fp = len([idx for idx in idx_FP if self.detections[idx].obj_type == obj_type])
+            n_fn = len([idx for idx in idx_FN if self.truths[idx].obj_type == obj_type])
+            n_tp = 0
+            for r, cw in assigns.items():
+                c = list(cw.keys())[0]
+                if self.detections[r].obj_type == obj_type:
+                    if self.truths[c].obj_type == obj_type:
+                        n_tp += 1
+                    else:
+                        n_fp += 1
+                elif self.truths[c].obj_type == obj_type:
+                    n_fn += 1
+            self.confusion_by_class[obj_type] = np.array([[n_tp, n_fn],[n_fp, 0]])
 
         # Store map from index to what it is
         self.result["false_positives"] = idx_FP
@@ -268,7 +306,7 @@ class ResultManager:
         for ia, ib in self.result["assigned"].items():
             try:
                 ib = list(ib.keys())[0]
-                iou_assign.append(dets[ia].box3d.IoU(self.truths[ib].box3d))
+                iou_assign.append(self.detections[ia].box3d.IoU(self.truths[ib].box3d))
             except AttributeError as e:
                 self.result["assigned_iou"] = []
             else:
@@ -448,7 +486,7 @@ class ResultManager:
                 raise NotImplementedError
 
 
-def associate_detections_truths(detections, truths, metric="3D_IoU", radius=None):
+def associate_detections_truths(detections, truths, metric="3D_IoU", threshold=0.1, radius=None, assign_algorithm='gnn'):
     """
     Determine associations, false positives, and false negatives
 
@@ -468,6 +506,9 @@ def associate_detections_truths(detections, truths, metric="3D_IoU", radius=None
 
     tol = 1e-8
 
+    if "iou" in metric.lower():
+        threshold *= -1
+
     # Handle case of none
     no_dets = (detections is None) or (len(detections) == 0)
     no_truths = (truths is None) or (len(truths) == 0)
@@ -477,92 +518,102 @@ def associate_detections_truths(detections, truths, metric="3D_IoU", radius=None
         nc = 0 if truths is None else len(truths)
         A = np.zeros((nr, nc))
     else:
-        A = _build_A_matrix(detections, truths, metric, radius)
-
-    assignment = gnn_single_frame_assign(A, algorithm="JVC", all_assigned=False)
+        if "iou" in metric.lower():
+            A = build_A_from_iou(detections, truths)
+        else:
+            raise NotImplementedError(metric)
+        
+    if assign_algorithm == 'gnn':
+        assignment = gnn_single_frame_assign(A, algorithm="JVC",
+            cost_threshold=threshold, all_assigned=False)
+    elif assign_algorithm == 'greedy':
+        assignment = greedy_assignment(A, threshold=threshold)
+    else:
+        raise NotImplementedError(assign_algorithm)
     return assignment, A
 
 
-def _build_A_matrix(detections, truths, metric, radius):
-    if radius is not None:
-        radius2 = radius**2
-    else:
-        radius2 = None
 
-    # Build assignment matrix
-    A = np.zeros((len(detections), len(truths)))
-    # Add IoU's to the assignment matrix
-    for i, det in enumerate(detections):
-        for j, tru in enumerate(truths):
-            A[i, j] = _get_assignment_cost(det, tru, metric, radius2)
-    # import ipdb; ipdb.set_trace()
-    return A
+# def _build_A_matrix(detections, truths, metric, radius):
+#     if radius is not None:
+#         radius2 = radius**2
+#     else:
+#         radius2 = None
 
-
-def _get_center(obj):
-    try:
-        center = obj.box3d.center
-    except AttributeError as e:
-        npos = sum(["position" in s for s in obj.filter.state_names])
-        center = np.squeeze(obj.filter.x_vector[:npos])
-    return center
+#     # Build assignment matrix
+#     A = np.zeros((len(detections), len(truths)))
+#     # Add IoU's to the assignment matrix
+#     for i, det in enumerate(detections):
+#         for j, tru in enumerate(truths):
+#             A[i, j] = _get_assignment_cost(det, tru, metric, radius2)
+#     # import ipdb; ipdb.set_trace()
+#     return A
 
 
-def _get_assignment_cost(det, tru, metric, radius2):
-    """
-    Define the assignment costs when running detection -- truth assignment
-    """
-    if metric == "3D_IoU":
-        try:
-            cost = -det.box3d.IoU(tru.box3d)
-        except AttributeError:
-            try:
-                cost = -det.IoU(tru)
-            except AttributeError as e:
-                raise AttributeError(
-                    "Could not find a suitable attribute...did you want a 2D_IoU as metric? "
-                    + str(e)
-                )
-        if cost > -0.01:
-            cost = np.inf
-    elif metric == "center_dist":
-        center1 = _get_center(det)
-        center2 = _get_center(tru)
-        if det.T_reference != tru.T_reference:  # convert to det frame
-            T_switch = (det.T_reference @ tru.T_reference.T).T
-            center2 = tru.T_reference.coordinates.convert(
-                T_switch @ center2, det.T_reference.coordinates
-            )
-        if len(center1) == 2:
-            # assume BEV center distance
-            center2 = center2[[2, 0]]
-            center2[1] *= -1
-        cost = np.sum((center1 - center2) ** 2)
-        if (radius2 is not None) and (cost > radius2):
-            cost = np.inf
-    elif metric == "2D_IoU":
-        try:
-            tru_box = tru.box2d
-        except AttributeError as e:
-            # Check if in view first
-            if box_in_fov(tru.box3d, det.box2d.calibration):
-                tru_box = tru.box3d.project_to_2d_bbox(det.box2d.calibration)
-            else:
-                return np.inf
-        cost = -det.box2d.IoU(tru_box)
-        if cost > -1e-8:
-            cost = np.inf
-    elif metric == "2D_FV_IoU":
-        # project 3d box into 2D FV
-        raise NotImplementedError
-    elif metric == "2D_BEV_IoU":
-        # project 3d box into 2D BEV
-        raise NotImplementedError
-    else:
-        raise RuntimeError(
-            "Cannot understand assignment metric...choices are: [3D_IoU, center_dist, 2D_IoU, 2D_FV_IoU, 2D_BEV_IoU]"
-        )
-    return cost
+# def _get_center(obj):
+#     try:
+#         center = obj.box3d.center
+#     except AttributeError as e:
+#         npos = sum(["position" in s for s in obj.filter.state_names])
+#         center = np.squeeze(obj.filter.x_vector[:npos])
+#     return center
+
+
+# def _get_assignment_cost(det, tru, metric, radius2):
+#     """
+#     Define the assignment costs when running detection -- truth assignment
+#     """
+#     if metric == "3D_IoU":
+#         try:
+#             cost = -det.box3d.IoU(tru.box3d)
+#         except AttributeError:
+#             try:
+#                 cost = -det.IoU(tru)
+#             except AttributeError as e:
+#                 raise AttributeError(
+#                     "Could not find a suitable attribute...did you want a 2D_IoU as metric? "
+#                     + str(e)
+#                 )
+#         if cost > -0.01:
+#             cost = np.inf
+#     elif metric == "center_dist":
+#         center1 = _get_center(det)
+#         center2 = _get_center(tru)
+#         if det.T_reference != tru.T_reference:  # convert to det frame
+#             T_switch = (det.T_reference @ tru.T_reference.T).T
+#             center2 = tru.T_reference.coordinates.convert(
+#                 T_switch @ center2, det.T_reference.coordinates
+#             )
+#         if len(center1) == 2:
+#             # assume BEV center distance
+#             center2 = center2[[2, 0]]
+#             center2[1] *= -1
+#         cost = np.sum((center1 - center2) ** 2)
+#         if (radius2 is not None) and (cost > radius2):
+#             cost = np.inf
+#     elif metric == "2D_IoU":
+#         try:
+#             tru_box = tru.box2d
+#         except AttributeError as e:
+#             # Check if in view first
+#             if box_in_fov(tru.box3d, det.box2d.calibration):
+#                 tru_box = tru.box3d.project_to_2d_bbox(det.box2d.calibration)
+#             else:
+#                 return np.inf
+#         cost = -det.box2d.IoU(tru_box)
+#         if cost > -1e-8:
+#             cost = np.inf
+#     elif metric == "2D_FV_IoU":
+#         # project 3d box into 2D FV
+#         raise NotImplementedError
+#     elif metric == "2D_BEV_IoU":
+#         # project 3d box into 2D BEV
+#         raise NotImplementedError
+#     else:
+#         raise RuntimeError(
+#             "Cannot understand assignment metric...choices are: [3D_IoU, center_dist, 2D_IoU, 2D_FV_IoU, 2D_BEV_IoU]"
+#         )
+#     return cost
 
 
 # def IOU_2d(corners1, corners2):

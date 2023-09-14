@@ -130,8 +130,9 @@ class CarlaManager:
         self.t_elapsed = 0
         self.sensor_data = {}
 
-        # -- remove NPCs
+        # -- remove existing elements:
         self._npc_manager.destroy()
+        self.infrastructure.destroy()
 
         # -- reset EGO
         self.ego.restart(t0=self.t0, frame0=self.frame0, save_folder=save_folder)

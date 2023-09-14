@@ -136,3 +136,20 @@ def test_eval_preds():
     else:
         logging.warning(msg_obj)
         print(msg_obj)
+
+
+def test_eval_confusion_by_class():
+    det_manager = make_kitti_tracking_data(KDM_train, 100, n_frames=10)
+    dets = det_manager.pop(name_3d)
+    res = avapi.evaluation.ResultManager(
+        idx=0,
+        detections=dets,
+        truths=dets,
+    )
+    assert np.all(res.confusion == np.array([[len(dets), 0], [0, 0]]))
+    for k, conf in res.confusion_by_class.items()
+        assert np.all(conf == np.array([[conf[0,0], 0], [0, 0]]))
+
+
+def test_eval_average_precision():
+    pass

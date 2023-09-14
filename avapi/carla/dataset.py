@@ -27,9 +27,9 @@ def check_xor_for_none(a, b):
         raise ValueError("At least one input must be none")
 
 
-def get_splits_scenes(data_dir, modval=4, seed=1):
+def get_splits_scenes(data_dir, seed=1, frac_train=0.7, frac_val=0.3):
     CSM = CarlaScenesManager(data_dir)
-    return CSM.make_splits_scenes(modval=modval, seed=seed)
+    return CSM.make_splits_scenes(seed=seed, frac_train=frac_train, frac_val=frac_val)
 
 
 def run_dataset_postprocessing(data_dir):
@@ -82,7 +82,7 @@ class CarlaScenesManager(BaseSceneManager):
         self.split = split
         self.verbose = verbose
         self.scenes = sorted(next(os.walk(data_dir))[1])
-        self.splits_scenes = self.make_splits_scenes(modval=4, seed=1)
+        self.splits_scenes = self.make_splits_scenes(seed=1, frac_train=0.7, frac_val=0.3)
 
     def get_scene_dataset_by_index(self, scene_idx):
         return CarlaSceneDataset(self.data_dir, self.scenes[scene_idx])

@@ -14,9 +14,6 @@ from avstack.modules.perception.detections import BoxDetection, DetectionDecoder
 from avapi.evaluation.base import ResultAnalyzer, ResultManager
 
 
-# from avapi.evaluation.base import ResultManager
-
-
 def get_percep_results_from_folder(
     DM,
     result_path,

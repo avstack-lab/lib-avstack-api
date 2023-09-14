@@ -6,6 +6,7 @@
 
 
 from .base import ResultManager, color_from_object_type, parse_color_string
+from . import metrics
 from .perception import (
     get_percep_results_from_folder,
     get_percep_results_from_multi_folder,

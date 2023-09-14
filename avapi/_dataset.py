@@ -11,6 +11,7 @@
 import hashlib
 import json
 import os
+import random
 
 import numpy as np
 from avstack import calibration, sensors
@@ -56,19 +57,27 @@ class BaseSceneManager:
     def get_splits_scenes(self):
         return self.splits_scenes
 
-    def make_splits_scenes(self, modval=4, seed=1):
+    def make_splits_scenes(self, seed=1, frac_train=0.7, frac_val=0.3):
         """Split the scenes by hashing the experiment name and modding
         3:1 split using mod 4
         """
-        np.random.seed(seed)
-        splits_scenes = {"train": [], "val": []}
-        for scene in self.scenes:
-            vh = 3 * int(hashlib.sha1(scene.encode("utf-8")).hexdigest(), 16)
-            v = vh % modval
-            if v == (modval - 1):
+        rng = random.Random(seed)
+        
+        # first two we alternate just to have one
+        splits_scenes = {"train": [], "val": [], "test":[]}
+        for i, scene in enumerate(self.scenes):
+            if i == 0:
+                splits_scenes["train"].append(scene)
+            elif i == 1:
                 splits_scenes["val"].append(scene)
             else:
-                splits_scenes["train"].append(scene)
+                rv = rng.random()
+                if rv < frac_train:
+                    splits_scenes["train"].append(scene)
+                elif rv < (frac_train+frac_val):
+                    splits_scenes["val"].append(scene)
+                else:
+                    splits_scenes["test"].append(scene)
         return splits_scenes
 
     def get_scene_dataset_by_name(self):

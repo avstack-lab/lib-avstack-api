@@ -15,6 +15,7 @@ from tqdm import tqdm
 from multiprocessing import Pool
 from functools import partial
 import logging
+import numpy as np
 
 import avstack
 import avapi
@@ -22,7 +23,7 @@ import avapi
 from avstack.environment.objects import Occlusion
 
 
-def main(args, frame_start=4, frame_end_trim=4, n_frames_max=10000, n_max_proc=4):
+def main(args, frame_start=4, frame_end_trim=4, n_frames_max=100000, n_max_proc=4):
     CSM = avapi.carla.CarlaScenesManager(args.data_dir)
     print("Postprocessing carla dataset from {}{}".format(args.data_dir, "" if not args.multi else " with multiprocessing"))
     for i_scene, CDM in enumerate(CSM):
@@ -99,9 +100,8 @@ def process_func_frames(CDM, sens, obj_sens_folder, ego, objects_global, i_frame
                 raise e
 
         # -- add ego object to objects if other sensor (e.g., infra)
-        if ego.position.distance(calib.reference) > 5:
-            # objects_global.append(ego)
-            pass
+        if ('infra' in sens.lower()) or ('agent' in sens.lower()):
+            objects_global = np.append(objects_global, ego)
 
         # -- change to sensor origin
         objects_local = objects_global
@@ -149,6 +149,22 @@ def process_func_frames(CDM, sens, obj_sens_folder, ego, objects_global, i_frame
         elif 'LIDAR' in sens:
             d_img = None
             pc = CDM.get_lidar(i_frame, sens)
+
+            # HACK: save a projected version of the lidar data if infrastructure
+            # In the future, this should become a custom preprocessing step
+            # inside the perception model itself with a calibration file supplement
+            if 'infra' in sens.lower():
+                timestamp = None
+                pc_ground = pc.transform_to_ground()
+                calib_filepath = CDM.get_sensor_file(i_frame, timestamp, sens, "calib") + ".txt"
+                pc_filepath = CDM.get_sensor_data_filepath(frame=i_frame, sensor=sens)
+                sens_2 = sens + "_GROUNDED"
+                pc_filepath_2 = pc_filepath.replace('sensor_data', 'sensor_data_grounded').replace(sens, sens_2)
+                calib_filepath_2 = calib_filepath.replace('sensor_data', 'sensor_data_grounded').replace(sens, sens_2)
+                os.makedirs(os.path.dirname(pc_filepath_2), exist_ok=True)
+                pc_ground.save_to_file(pc_filepath_2, flipy=False, as_ply=False)
+                pc_ground.calibration.save_to_file(calib_filepath_2)
+
         elif 'RADAR' in sens:
             d_img = None
             pc = CDM.get_lidar(i_frame, 'LIDAR_TOP')  # HACK this for now
