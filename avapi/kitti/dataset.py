@@ -407,7 +407,7 @@ class KittiScenesManager(BaseSceneManager):
                 for scene in scenes_this
             ]
         )
-        self.splits_scenes = self.make_splits_scenes(modval=4, seed=1)
+        self.splits_scenes = self.make_splits_scenes(seed=1)
 
     def convert_raw_dataset(self):
         if self.raw_data_dir is not None:
