@@ -1,8 +1,11 @@
 import math
 
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
 
 # =============================================
 # Precision-Recall Utilities
@@ -37,10 +40,14 @@ def get_prec_rec_from_results(results: list, by_class: bool):
                     rec[k] = []
                 prec[k].append(p[k])
                 rec[k].append(r[k])
+        else:
+            prec.append(p)
+            rec.append(r)
     return prec, rec
 
 
 def get_ap_from_results(results: list, by_class: bool):
+    """Input is a list of the results"""
     prec, rec = get_prec_rec_from_results(results, by_class=by_class)
     if by_class:
         ap, mprec, mrec = {}, {}, {}
@@ -52,6 +59,7 @@ def get_ap_from_results(results: list, by_class: bool):
 
 
 def get_lamr_from_results(results: list, by_class: bool):
+    """Input is a list of the results"""
     prec, rec = get_prec_rec_from_results(results, by_class=by_class)
     if by_class:
         lamr, mr, fppi = {}, {}, {}
@@ -186,30 +194,33 @@ def plot_prec_rec(prec, rec, by_class: bool):
     """Plots the precision-recall curves for each class"""
 
 
-def barplot_gt(gt, n_files: int):
+def barplot_gt(gt, n_files: int, **kwargs):
     """Barplots number of ground truths for all classes"""
     title = "Number of Ground Truths - {} files".format(n_files)
     xlabel = "Number of objects"
-    fig, ax = _base_bar_plot(gt, xlabel, title, is_int=True)
+    fig, ax = _base_bar_plot(gt, xlabel, title, is_int=True, **kwargs)
     plt.show()
+    return fig
 
 
-def barplot_lamr(lamr):
+def barplot_lamr(lamr, **kwargs):
     """Barplots lamr for classes"""
     title = "LAMR of all classes"
     xlabel = "log average miss rate"
-    fig, ax = _base_bar_plot(lamr, xlabel, title)
+    fig, ax = _base_bar_plot(lamr, xlabel, title, **kwargs)
     ax.set_xlim([0.0, 1.0])
     plt.show()
+    return fig
 
 
-def barplot_ap(ap):
+def barplot_ap(ap, **kwargs):
     """Barplots mAP for classes"""
     title = "mAP of all classes"
     xlabel = "mAP"
-    fig, ax = _base_bar_plot(ap, xlabel, title)
+    fig, ax = _base_bar_plot(ap, xlabel, title, min_bar_show=0.01, **kwargs)
     ax.set_xlim([0.0, 1.0])
     plt.show()
+    return fig
 
 
 def _base_bar_plot(
@@ -219,7 +230,15 @@ def _base_bar_plot(
     total_height=0.8,
     single_height=1,
     write_number=True,
+    min_bar_show=-np.inf,
     is_int=False,
+    figsize=(7,5),
+    fontsize=14,
+    reverse_subbars=False,
+    reverse_bars=False,
+    color_bias=0,
+    color_squeeze=1.0,
+    cmap="RdYlGn",
 ):
     """Base bar plot function for all metrics
 
@@ -239,28 +258,30 @@ def _base_bar_plot(
         raise NotImplementedError("handle different input cases later...")
 
     # helpers for bar width etc
-    keys = {key for _, vals_run in vals for key in vals_run.keys()}
+    keys = sorted({key for _, vals_run in vals for key in vals_run.keys()})
+    kloops = keys if not reverse_bars else reversed(keys)
     n_runs = len(vals)
     bar_height = total_height / n_runs
 
     # make the plot
-    fig, ax = plt.subplots(figsize=(9.2, 5))
-    colors = plt.get_cmap("RdYlGn")(np.linspace(0.15, 0.85, len(vals)))
+    fig, ax = plt.subplots(figsize=figsize)
+    colors = plt.get_cmap(cmap)(color_bias + color_squeeze*np.linspace(0.0, 0.85, len(vals)))
 
     # outer loop is over runs
     handles = []
     labels = []
     i = -1
-    for color, (vtitle, vals_run) in zip(colors, vals):
+    vals_loop = vals if not reverse_subbars else reversed(vals)
+    for color, (vtitle, vals_run) in zip(colors, vals_loop):
         i += 1
         first = True
         y_offset = (i - n_runs / 2) * bar_height + bar_height / 2
         # inner loop is over classes
-        for i_k, k in enumerate(reversed(sorted(keys))):
+        for i_k, k in enumerate(kloops):
             if k in vals_run:
                 bars = ax.barh(
                     y=i_k + y_offset,
-                    width=vals_run[k],
+                    width=max(vals_run[k], min_bar_show),
                     left=0,
                     height=bar_height * single_height,
                     color=color,
@@ -270,11 +291,21 @@ def _base_bar_plot(
                     labels.append(vtitle)
                     first = False
                 if write_number:
-                    ax.bar_label(bars, fmt="%d" if is_int else "%.2f")
+                    ax.bar_label(bars, labels=[f'{vals_run[k]:d}' if is_int else f'{vals_run[k]:.2f}'], fontsize=int(fontsize*0.9))
     # set additional plot parameters
     ax.set_yticks(range(len(keys)))
-    ax.set_yticklabels(reversed(sorted(keys)))
-    ax.legend(handles, labels)
+    ax.set_yticklabels(kloops)
+    ax.legend(reversed(handles), reversed(labels), fancybox=True, shadow=True, loc='upper center', bbox_to_anchor=(0.60, 0.08))
     ax.set_xlabel(xlabel)
-    ax.set_title(title)
+    ax.xaxis.set_label_position('top') 
+    ax.xaxis.set_ticklabels([])
+    ax.set_yticklabels(ax.get_yticklabels(), rotation=45)
+    # ax.set_title(title)
+    # set plot fonts
+    for item in ([ax.yaxis.label] +
+             ax.get_xticklabels() + ax.get_yticklabels() + ax.get_legend().get_texts()):
+        item.set_fontsize(fontsize)
+    ax.title.set_fontsize(int(fontsize*1.2))
+    ax.xaxis.label.set_fontsize(int(fontsize*1.4))
     return fig, ax
+    plt.tight_layout

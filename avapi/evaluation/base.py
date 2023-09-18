@@ -19,57 +19,15 @@ from avstack.modules.assignment import (
 )
 from tqdm import tqdm
 
-from avapi.utils import get_indices_in_folder
-
+from avapi.utils import get_indices_in_folder, parse_color_string, color_from_object_type
+from ..visualize import snapshot
 from .metrics import precision, recall
+
 
 
 # =============================================
 # Result Managers
 # =============================================
-
-
-def color_from_object_type(det_type, no_white=False, no_black=False):
-    if det_type == "detection":
-        cstring = "green" if no_black else "black"
-    elif det_type == "truth":
-        cstring = "cyan" if no_white else "white"
-    elif det_type == "false_negative":
-        cstring = "yellow"
-    elif det_type == "false_positive":
-        cstring = "red"
-    elif det_type == "true_positive":
-        cstring = "blue"
-    elif det_type == "dontcare":
-        cstring = "brown"
-    else:
-        raise NotImplementedError(f"{det_type} not available for color")
-    return parse_color_string(cstring)
-
-
-def parse_color_string(cstring):
-    if cstring == "white":
-        lcolor = (255, 255, 255)
-    elif cstring == "green":
-        lcolor = (0, 255, 0)
-    elif cstring == "red":
-        lcolor = (255, 0, 0)
-    elif cstring == "blue":
-        lcolor = (0, 0, 255)
-    elif cstring == "cyan":
-        lcolor = (0, 255, 255)
-    elif cstring == "lightblue":
-        lcolor = (51, 255, 255)
-    elif cstring == "black":
-        lcolor = (0, 0, 0)
-    elif cstring == "yellow":
-        lcolor = (236, 213, 64)
-        # lcolor = (255, 255, 0)
-    elif cstring == "brown":
-        lcolor = (165, 42, 42)
-    else:
-        raise ValueError(f"Unknown color type {cstring}")
-    return lcolor
 
 
 class ResultAnalyzer:
@@ -201,6 +159,14 @@ class ResultManager:
     @property
     def tracks(self):
         return self.detections
+
+    @property
+    def precision(self):
+        return precision(self.confusion)
+
+    @property
+    def recall(self):
+        return recall(self.confusion)
 
     def __repr__(self):
         return self.__str__()
@@ -461,13 +427,10 @@ class ResultManager:
             raise IOError("Must pass in something")
         self.run_assignment()
 
-    def visualize(self, DM=None, image=None, lidar=None, calib=None, projection="bev"):
+    def visualize(self, image=None, lidar=None, projection="bev"):
         # Get colors
-        labels_all = np.hstack([self.detections, self.truths])
+        objects_all = np.hstack([self.detections, self.truths])
         colors_all = self.colors["detections"] + self.colors["truths"]
-
-        if (DM is not None) and (calib is None):
-            calib = DM.get_calibration(self.idx)
 
         # ----- Show result in some projection
         if not isinstance(projection, list):
@@ -475,22 +438,17 @@ class ResultManager:
         for proj in projection:
             if proj == "bev":
                 """Takes 3D result and projects into BEV"""
-                assert ((lidar is not None) and (calib is not None)) or (DM is not None)
-                if (DM is not None) and (lidar is None):
-                    lidar = DM.get_lidar(self.idx)
-                visualize.show_lidar_bev(
-                    lidar, calib=calib, labels=labels_all, label_colors=colors_all
+                assert lidar is not None
+                snapshot.show_lidar_bev_with_boxes(
+                    point_cloud=lidar, boxes=objects_all, box_colors=colors_all
                 )
             elif proj == "2d":
                 """Assume front-view camera result"""
-                assert ((image is not None) and (calib is not None)) or (DM is not None)
-                if (DM is not None) and (image is None):
-                    image = DM.get_image(self.idx)
-                visualize.show_image_with_boxes(
-                    image,
-                    calib=calib,
-                    labels=labels_all,
-                    label_colors=colors_all,
+                assert image is not None
+                snapshot.show_image_with_boxes(
+                    img=image,
+                    boxes=objects_all,
+                    box_colors=colors_all,
                     show3d=False,
                     inline=True,
                 )

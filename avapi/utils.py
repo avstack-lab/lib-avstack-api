@@ -62,3 +62,46 @@ def get_indices_in_folder(glob_dir, idxs=None):
         if idx not in idxs_available:
             idxs_available.append(idx)
     return idxs_available
+
+
+def color_from_object_type(det_type, no_white=False, no_black=False):
+    if det_type == "detection":
+        cstring = "green" if no_black else "black"
+    elif det_type == "truth":
+        cstring = "cyan" if no_white else "white"
+    elif det_type == "false_negative":
+        cstring = "yellow"
+    elif det_type == "false_positive":
+        cstring = "red"
+    elif det_type == "true_positive":
+        cstring = "blue"
+    elif det_type == "dontcare":
+        cstring = "brown"
+    else:
+        raise NotImplementedError(f"{det_type} not available for color")
+    return parse_color_string(cstring)
+
+
+def parse_color_string(cstring):
+    if cstring == "white":
+        lcolor = (255, 255, 255)
+    elif cstring == "green":
+        lcolor = (0, 255, 0)
+    elif cstring == "red":
+        lcolor = (255, 0, 0)
+    elif cstring == "blue":
+        lcolor = (0, 0, 255)
+    elif cstring == "cyan":
+        lcolor = (0, 255, 255)
+    elif cstring == "lightblue":
+        lcolor = (51, 255, 255)
+    elif cstring == "black":
+        lcolor = (0, 0, 0)
+    elif cstring == "yellow":
+        lcolor = (236, 213, 64)
+        # lcolor = (255, 255, 0)
+    elif cstring == "brown":
+        lcolor = (165, 42, 42)
+    else:
+        raise ValueError(f"Unknown color type {cstring}")
+    return lcolor

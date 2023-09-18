@@ -17,7 +17,7 @@ from avstack.environment.objects import VehicleState
 from avstack.geometry import bbox
 from avstack.modules.perception.detections import BoxDetection
 
-from avapi.evaluation import ResultManager, color_from_object_type
+# from avapi.evaluation import ResultManager, color_from_object_type
 
 from .snapshot import show_image_with_boxes
 

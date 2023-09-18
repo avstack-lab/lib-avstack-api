@@ -13,7 +13,7 @@ from avstack.modules.perception.detections import BoxDetection, MaskDetection
 from avstack.modules.tracking.tracks import BasicBoxTrack3D
 from PIL import Image
 
-from avapi.evaluation import parse_color_string
+from avapi.utils import parse_color_string
 
 from .base import draw_projected_box3d, get_lidar_color
 
