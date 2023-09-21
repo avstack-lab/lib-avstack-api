@@ -278,6 +278,9 @@ def show_lidar_bev_with_boxes(
     Show lidar and the detection results (optional) in BEV
 
     :point_cloud - lidar in the lidar frame
+    :extent -  3D area in the form
+        [[min_x, max_x], [min_y, max_y], [min_z, max_z]]
+
     """
     # Make appropriate types
     if isinstance(boxes, list):
@@ -303,7 +306,7 @@ def show_lidar_bev_with_boxes(
         box_filter = maskfilters.filter_boxes_extent(boxes, extent)
         boxes = boxes[box_filter]
         if type(box_colors) in [list, np.ndarray]:
-            box_colors = box_colors[box_filter]
+            box_colors = [col for col, yesno in zip(box_colors, box_filter) if yesno]
     else:
         pc2 = point_cloud.data
 
@@ -351,9 +354,14 @@ def show_lidar_bev_with_boxes(
 
     # define the size of the image and scaling factor
     img1 = 0 * np.ones([bev_size[0], bev_size[1], 3], dtype=np.uint8)
-    width_scale = (max_width - min_width) / bev_size[0]
-    range_scale = (max_range - min_range) / bev_size[1]
-    min_arr = np.array([min_range, min_width])
+    if extent is None:
+        width_scale = (max_width - min_width) / bev_size[0]
+        range_scale = (max_range - min_range) / bev_size[1]
+        min_arr = np.array([min_range, min_width])
+    else:
+        width_scale = (extent[1][1] - extent[1][0]) / bev_size[0]
+        range_scale = (extent[0][1] - extent[0][0]) / bev_size[1]
+        min_arr = np.array([extent[0][0], extent[1][0]])
     sc_arr = np.array([range_scale, width_scale])
     pc_bev = (pc2[:, [0, 1]] - min_arr) / sc_arr
 
@@ -429,7 +437,11 @@ def show_lidar_bev_with_boxes(
         else:
             raise RuntimeError("Unknown line type")
 
-    viz_extent = [min_range, max_range, min_width, max_width]
+    if extent is None:
+        viz_extent = [min_range, max_range, min_width, max_width]
+    else:
+        viz_extent = [*extent[0], *extent[1]]
+
     if flipx:
         img1 = np.flip(img1, axis=1)
         viz_extent = [viz_extent[1], viz_extent[0], viz_extent[2], viz_extent[3]]
