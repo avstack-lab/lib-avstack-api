@@ -10,7 +10,7 @@ from avstack.environment.objects import VehicleState
 from avstack.geometry import Box2D, Box3D, bbox
 from avstack.geometry.transformations import project_to_image
 from avstack.modules.perception.detections import BoxDetection, MaskDetection
-from avstack.modules.tracking.tracks import BasicBoxTrack3D
+from avstack.modules.tracking.tracks import BasicBoxTrack3D, BasicBoxTrack2D
 from PIL import Image
 
 from avapi.utils import parse_color_string
@@ -146,10 +146,10 @@ def show_image_with_boxes(
 
         # Show box
         if isinstance(box, Box2D) or (
-            isinstance(box, (VehicleState, BoxDetection, MaskDetection))
+            isinstance(box, (VehicleState, BoxDetection, MaskDetection, BasicBoxTrack2D))
             and isinstance(box.box, Box2D)
         ):
-            if isinstance(box, (VehicleState, BoxDetection, MaskDetection)):
+            if isinstance(box, (VehicleState, BoxDetection, MaskDetection, BasicBoxTrack2D)):
                 if isinstance(box, MaskDetection):
                     mask = box.mask
                 box = box.box
