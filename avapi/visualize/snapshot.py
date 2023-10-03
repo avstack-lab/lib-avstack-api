@@ -214,7 +214,7 @@ def show_image_with_boxes(
             else:
                 mask_color = np.array([255], dtype="uint8")
                 mask_img = np.where(mask.data, mask_color, img1)
-                img1 = cv2.addWeighted(img1, 0.5, mask_img, 0.5, 0)
+                img1 = cv2.addWeighted(img1, 1.0, mask_img, 0, 0)
 
 
     # Plot results-----------------------

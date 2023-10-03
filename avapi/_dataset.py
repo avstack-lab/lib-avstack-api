@@ -472,7 +472,6 @@ class BaseSceneDataset:
             q_Ccam_to_Cstan = q_cam_to_stan
             q_Cstan_to_obj = tforms.transform_orientation([0, 0, yaw], "euler", "quat")
             q_O_to_obj = q_Cstan_to_obj * q_Ccam_to_Cstan
-
         try:
             ID = int(ID)
         except ValueError as e:
@@ -720,7 +719,7 @@ class _nuBaseDataset(BaseSceneDataset):
                 np.quaternion(*q_mult_vec(q_E_to_G.q, np.array(ego["rotation_rate"]))),
                 ref,
             )
-        box3d = Box3D(x_G_to_E_in_G, q_G_to_E, self.hwl)
+        box3d = Box3D(x_G_to_E_in_G, q_G_to_E, self.hwl, ID=-1)
 
         # -- set up ego in global reference frame
         veh = VehicleState(obj_type="car")
@@ -781,7 +780,7 @@ class _nuBaseDataset(BaseSceneDataset):
                 )
                 angular_velocity = None
                 hwl = [box.wlh[2], box.wlh[0], box.wlh[1]]
-                box = Box3D(position, attitude, hwl, where_is_t="center")
+                box = Box3D(position, attitude, hwl, where_is_t="center", ID=obj_ID)
                 occlusion = occlusion_mapping[int(metadata["visibility_token"])]
                 obj = VehicleState(obj_type=obj_type, ID=obj_ID)
                 obj.set(
