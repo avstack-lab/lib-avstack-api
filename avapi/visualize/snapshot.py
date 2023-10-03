@@ -29,11 +29,11 @@ def show_disparity(disparity, is_depth, extent=None):
     plt.show()
 
 
-def show_image(img, extent=None, axis=False, inline=True):
+def show_image(img, extent=None, axis=False, inline=True, grayscale=False):
     if inline:
         pil_im = Image.fromarray(img)
         plt.figure(figsize=[2 * x for x in plt.rcParams["figure.figsize"]])
-        plt.imshow(pil_im, extent=extent)
+        plt.imshow(pil_im, extent=extent, cmap=('gray' if grayscale else None))
         if not axis:
             plt.axis("off")
         plt.show()
@@ -207,13 +207,19 @@ def show_image_with_boxes(
 
         # Show mask
         if (mask is not None) and (with_mask):
-            mask_color = np.array([0, 255, 0], dtype="uint8")
-            mask_img = np.where(mask.data[..., None], mask_color, img1)
-            img1 = cv2.addWeighted(img1, 0.8, mask_img, 0.2, 0)
+            if (len(img.shape) == 3) and (img.shape[2] == 3):
+                mask_color = np.array([0, 255, 0], dtype="uint8")
+                mask_img = np.where(mask.data[..., None], mask_color, img1)
+                img1 = cv2.addWeighted(img1, 0.7, mask_img, 0.3, 0) 
+            else:
+                mask_color = np.array([255], dtype="uint8")
+                mask_img = np.where(mask.data, mask_color, img1)
+                img1 = cv2.addWeighted(img1, 0.5, mask_img, 0.5, 0)
+
 
     # Plot results-----------------------
     if show:
-        show_image(img1, inline=inline)
+        show_image(img1, inline=inline, grayscale=(len(img.shape)<3 or img.shape[2]==1))
     if return_images:
         return img1
 
