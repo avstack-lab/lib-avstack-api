@@ -53,18 +53,29 @@ def draw_projected_box3d(
       . 5 -------- 4
       |/         |/
       6 -------- 7
+
+      x refers to left/right
+      y refers to up/down
     """
     imsize = image.shape
     off = [False] * qs.shape[0]
     for i in range(qs.shape[0]):
-        if (qs[i, 0] < 0) or (qs[i, 0] > imsize[1] - 1):
-            if (qs[i, 1] < 0) or (qs[i, 1] > imsize[0] - 1):
-                off[i] = True
+        c1_a = (qs[i, 0] < 0) or (qs[i, 0] > imsize[1] - 1)
+        c1_b = (qs[i, 1] < 0) or (qs[i, 1] > imsize[0] - 1)
+        if c1_a and c1_b:
+            off[i] = True
         # qs[i,0] = min(max(qs[i,0], 0), imsize[1]-1)
         # qs[i,1] = min(max(qs[i,1], 0), imsize[0]-1)
+
     if sum(off) > 3:
         return image
 
+    # heuristic checks to prevent weird "twisting"
+    if qs[0,1] < qs[4,1]:
+        if qs[1,1] >= qs[5,1]:
+            return image
+
+    # show corners
     qs = qs.astype(np.int32)
     for k in range(0, 4):
         # Ref: http://docs.enthought.com/mayavi/mayavi/auto/mlab_helper_functions.html
