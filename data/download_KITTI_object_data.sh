@@ -27,6 +27,7 @@ do
     fol_name="${fol_name//.zip/}"
     fol_name="${fol_name%/}"
     evidence="${DATAFOLDER}/training/${fol_name}/.full_download"
+    echo "Looking for evidence at $evidence"
     if [ -f "$evidence" ]; then
         echo -e "$fol_name already downloaded.\n"
     else

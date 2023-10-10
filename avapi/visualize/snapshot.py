@@ -248,19 +248,6 @@ def add_ID_to_image(img, bl_edge, ID, fontscale=1):
         )
 
 
-def show_objects_on_image(img, objects, projection="2d", **kwargs):
-    objects = [
-        obj for obj in objects if maskfilters.box_in_fov(obj.box3d, img.calibration)
-    ]
-    if projection == "2d":
-        boxes = [obj.box3d.project_to_2d_bbox(img.calibration) for obj in objects]
-    elif projection == "3d":
-        boxes = [obj.box3d for obj in objects]
-    else:
-        raise NotImplementedError(projection)
-    return show_image_with_boxes(img, boxes, **kwargs)
-
-
 def show_lidar_bev_with_boxes(
     point_cloud,
     boxes=[],
