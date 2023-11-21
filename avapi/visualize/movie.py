@@ -8,6 +8,8 @@ from IPython.display import Video
 from IPython.display import display
 import matplotlib.pyplot as plt
 
+# PROBLEM: nuscenes saved video not displaying properly 
+
 def make_movie_from_DM(DM, dataset_name, save=False, show_in_notebook=True):
         
     if DM.frames is None:
