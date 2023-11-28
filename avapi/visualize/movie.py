@@ -8,33 +8,31 @@ from IPython.display import Video
 from IPython.display import display
 import matplotlib.pyplot as plt
 
-# PROBLEM: nuscenes saved video not displaying properly 
 
-def make_movie_from_DM(DM, dataset_name, save=False, show_in_notebook=True):
-        
+def make_movie_from_DM(DM, dataset_name, CAM='main_camera', save=False, show_in_notebook=True):
     if DM.frames is None:
         print("NO FRAMES IN SCENE")
         return 
-        
-    range_frames = range(len(DM.frames))
-    CAM = 'image-2'
-    if (dataset_name == 'carla'):
-        range_frames = range(4, len(DM.frames)-5)
-        CAM = 'CAM_FRONT'
-    if (dataset_name == 'nuscenes'):
-        CAM = 'main_camera'        
+            
+    if dataset_name == 'carla':
+        i_start = 4
+        i_end = len(DM.frames) - 5
+    else:
+        i_start = 0
+        i_end = len(DM.frames)
         
     imgs = []
     boxes = []
-    for frame_idx in range_frames:
-        frame = DM.get_frames(sensor="main_camera")[frame_idx]
-        img_boxes = DM.get_objects(frame, sensor="main_lidar") # using ground truth
+    for frame_idx in range(i_start, i_end, 1):
+        frame = DM.get_frames(sensor=CAM)[frame_idx]
+        img_boxes = DM.get_objects(frame, sensor=CAM) # using ground truth
         img = DM.get_image(frame, sensor=CAM)
         
         boxes.append(img_boxes)
         imgs.append(img)
 
     make_movie(imgs, boxes, fps=DM.framerate, name=dataset_name, save=save, show_in_notebook=show_in_notebook)
+
 
 def make_movie(raw_imgs, boxes, fps=10, name="untitled", save=False, show_in_notebook=True):
     
@@ -62,7 +60,8 @@ def make_movie(raw_imgs, boxes, fps=10, name="untitled", save=False, show_in_not
     # show in notebook
     if show_in_notebook:
         make_slider_view(processed_imgs)
-        
+
+
 def make_slider_view(imgs):
     
     def f(idx):
