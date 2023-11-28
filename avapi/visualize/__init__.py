@@ -1,4 +1,4 @@
-from . import replay, snapshot
+from . import movie, replay, snapshot
 
 
-__all__ = ["snapshot", "replay"]
+__all__ = ["snapshot", "replay", "movie"]
