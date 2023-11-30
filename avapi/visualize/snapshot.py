@@ -2,7 +2,6 @@ from copy import deepcopy
 
 import avstack
 import cv2
-import matplotlib.pyplot as plt
 import numpy as np
 from avstack import maskfilters
 from avstack.datastructs import DataContainer
@@ -19,6 +18,8 @@ from .base import draw_projected_box3d, get_lidar_color
 
 
 def show_disparity(disparity, is_depth, extent=None):
+    import matplotlib.pyplot as plt
+
     if is_depth:
         img = disparity
     else:
@@ -30,6 +31,8 @@ def show_disparity(disparity, is_depth, extent=None):
 
 
 def show_image(img, extent=None, axis=False, inline=True, grayscale=False):
+    import matplotlib.pyplot as plt
+
     if inline:
         pil_im = Image.fromarray(img)
         plt.figure(figsize=[2 * x for x in plt.rcParams["figure.figsize"]])

@@ -3,10 +3,7 @@ import os
 from copy import deepcopy
 
 import cv2
-import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.widgets import Slider
-
 
 try:
     from ipywidgets import interact, widgets
@@ -181,6 +178,11 @@ def replay_track_results(
     """Tracks without showing perception data
     extent in standard (lidar) coordinates
     """
+
+
+    import matplotlib.pyplot as plt
+    from matplotlib.widgets import Slider
+
     track_results = deepcopy(track_results_in)
     assert len(projection) == 1, "Can only do 1 projection for now"
     assert (
@@ -506,6 +508,9 @@ def replay_track_percep_results(
     **kwargs,
 ):
     """Uses 3D tracks and image data to create a video"""
+
+    import matplotlib.pyplot as plt
+
     init = False
     count = 0
     idxs_record = np.asarray(sorted(list(track_results.keys())))
@@ -590,6 +595,9 @@ def _box_to_bev_rect(
     box_standard, color, facecolor=None, linewidth=3, linestyle="solid"
 ):
     """NOTE: angle is with respect to the bottom left corner, NOT the center"""
+
+    import matplotlib.pyplot as plt
+
     width = box_standard.l
     height = box_standard.w
     # -- create nominal box, rotate, translate

@@ -1,11 +1,10 @@
 import math
 
-import matplotlib
-import matplotlib.pyplot as plt
 import numpy as np
 
-matplotlib.rcParams['pdf.fonttype'] = 42
-matplotlib.rcParams['ps.fonttype'] = 42
+# import matplotlib
+# matplotlib.rcParams['pdf.fonttype'] = 42
+# matplotlib.rcParams['ps.fonttype'] = 42
 
 # =============================================
 # Precision-Recall Utilities
@@ -172,22 +171,23 @@ def plot_ground_truth_statistics():
     pass
 
 
-def plot_tp_fp(tp, fp, by_class: bool):
-    plt.barh(
-        range(n_classes),
-        fp_sorted,
-        align="center",
-        color="crimson",
-        label="False Positive",
-    )
-    plt.barh(
-        range(n_classes),
-        tp_sorted,
-        align="center",
-        color="forestgreen",
-        label="True Positive",
-        left=fp_sorted,
-    )
+# def plot_tp_fp(tp, fp, by_class: bool):
+#     import matplotlib.pyplot as plt
+#     plt.barh(
+#         range(n_classes),
+#         fp_sorted,
+#         align="center",
+#         color="crimson",
+#         label="False Positive",
+#     )
+#     plt.barh(
+#         range(n_classes),
+#         tp_sorted,
+#         align="center",
+#         color="forestgreen",
+#         label="True Positive",
+#         left=fp_sorted,
+#     )
 
 
 def plot_prec_rec(prec, rec, by_class: bool):
@@ -196,6 +196,8 @@ def plot_prec_rec(prec, rec, by_class: bool):
 
 def barplot_gt(gt, n_files: int, **kwargs):
     """Barplots number of ground truths for all classes"""
+    import matplotlib.pyplot as plt
+
     title = "Number of Ground Truths - {} files".format(n_files)
     xlabel = "Number of objects"
     fig, ax = _base_bar_plot(gt, xlabel, title, is_int=True, **kwargs)
@@ -205,6 +207,8 @@ def barplot_gt(gt, n_files: int, **kwargs):
 
 def barplot_lamr(lamr, **kwargs):
     """Barplots lamr for classes"""
+    import matplotlib.pyplot as plt
+
     title = "LAMR of all classes"
     xlabel = "log average miss rate"
     fig, ax = _base_bar_plot(lamr, xlabel, title, **kwargs)
@@ -215,6 +219,8 @@ def barplot_lamr(lamr, **kwargs):
 
 def barplot_ap(ap, **kwargs):
     """Barplots mAP for classes"""
+    import matplotlib.pyplot as plt
+
     title = "mAP of all classes"
     xlabel = "mAP"
     fig, ax = _base_bar_plot(ap, xlabel, title, min_bar_show=0.01, **kwargs)
@@ -246,6 +252,8 @@ def _base_bar_plot(
     list will represent different runs and the dict
     keys represent different object classes
     """
+
+    import matplotlib.pyplot as plt
 
     # input wrapping...for modularity's sake :)
     full_spec = (
@@ -308,4 +316,3 @@ def _base_bar_plot(
     ax.title.set_fontsize(int(fontsize*1.2))
     ax.xaxis.label.set_fontsize(int(fontsize*1.4))
     return fig, ax
-    plt.tight_layout

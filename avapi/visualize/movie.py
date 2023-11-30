@@ -6,7 +6,6 @@ import ipywidgets as wg
 from IPython.display import SVG
 from IPython.display import Video
 from IPython.display import display
-import matplotlib.pyplot as plt
 
 
 def make_movie_from_DM(DM, dataset_name, CAM='main_camera', save=False, show_in_notebook=True):
@@ -63,6 +62,7 @@ def make_movie(raw_imgs, boxes, fps=10, name="untitled", save=False, show_in_not
 
 
 def make_slider_view(imgs):
+    import matplotlib.pyplot as plt
     
     def f(idx):
         axs_slider.imshow(imgs[idx])
