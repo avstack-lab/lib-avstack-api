@@ -200,6 +200,9 @@ class CarlaSceneDataset(BaseSceneDataset):
             )
         self.sensor_folders = sensor_folders
         self.sensor_file_post = sensor_file_post
+        # HACK
+        sensor_frame_to_ts["ego"] = ego_frame_to_ts
+        sensor_frame_to_ts["npcs"] = npc_frame_to_ts
         self.sensor_frame_to_ts = sensor_frame_to_ts
         self.sensor_frames = sensor_frames
         self.file_endings = file_endings
