@@ -2,6 +2,7 @@ import os
 import avstack
 import avapi
 import cv2  
+from tqdm import tqdm
 import ipywidgets as wg
 from IPython.display import SVG
 from IPython.display import Video
@@ -37,9 +38,10 @@ def make_movie(raw_imgs, boxes, fps=10, name="untitled", save=False, show_in_not
     
     # process images (adding boxes to raw images)
     processed_imgs = []
-    for img, box in zip(raw_imgs, boxes):
-        processed_imgs.append(avapi.visualize.snapshot.show_image_with_boxes(img, box, inline=False, return_images=True))
-    
+    print('Processing images and boxes')
+    for img, box in tqdm(zip(raw_imgs, boxes), total=len(boxes)):
+        processed_imgs.append(avapi.visualize.snapshot.show_image_with_boxes(img, box, show=False, return_images=True))
+    print("done")
     height, width, layers = processed_imgs[0].shape
     size = (width,height)
     # generate movie
@@ -47,8 +49,10 @@ def make_movie(raw_imgs, boxes, fps=10, name="untitled", save=False, show_in_not
         movie_name = name + '_scene_movie.mp4'
     
         video = cv2.VideoWriter(movie_name,cv2.VideoWriter_fourcc(*'DIVX'), fps, size)
+        print("Saving movie")
         for img in processed_imgs:
             video.write(cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+        print("done")
         
         # Deallocating memories taken for window creation 
         cv2.destroyAllWindows()  
