@@ -213,12 +213,16 @@ class CarlaSceneDataset(BaseSceneDataset):
         super().__init__(whitelist_types, ignore_types)
 
     @property
-    def frames(self):
+    def frames_camera(self):
         return list(self.sensor_frames[self.sensors["main_camera"]])
 
     @property
-    def frames_ego(self):
+    def frames(self):
         return list(self.ego_frame_to_ts.keys())
+    
+    @property
+    def timestamps(self):
+        return list(self.ego_frame_to_ts.values())
 
     def __str__(self):
         return f"CARLA Object Datset of folder: {self.scene_path}"
