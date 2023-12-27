@@ -337,13 +337,17 @@ def show_lidar_bev_with_boxes(
             isinstance(box, BoxDetection) and isinstance(box.box, Box2D)
         ):
             continue  # cannot show 2D boxes
-        elif isinstance(box, (VehicleState, Box3D)) or (
-            isinstance(box, BoxDetection) and isinstance(box.box, Box3D)
+        elif (
+            isinstance(box, (VehicleState, Box3D))
+            or (isinstance(box, BoxDetection) and isinstance(box.box, Box3D))
+            or (isinstance(box, GroupTrack) and isinstance(box.state, BasicBoxTrack3D))
         ):
             if isinstance(box, VehicleState):
                 box = box.box
             elif isinstance(box, BoxDetection):
                 box = box.box
+            elif isinstance(box, GroupTrack):
+                box = box.state.box
         else:
             raise NotImplementedError(type(box))
 

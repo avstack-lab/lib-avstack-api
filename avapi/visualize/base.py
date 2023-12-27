@@ -1,13 +1,13 @@
 import cv2
+import matplotlib.pyplot as plt
 import numpy as np
 
 
+lidar_cmap = plt.cm.get_cmap("hsv", 256)
+lidar_cmap = np.array([lidar_cmap(i) for i in range(256)])[:, :3] * 255
+
+
 def get_lidar_color(value, mode="depth"):
-    import matplotlib.pyplot as plt
-
-    lidar_cmap = plt.cm.get_cmap("hsv", 256)
-    lidar_cmap = np.array([lidar_cmap(i) for i in range(256)])[:, :3] * 255
-
     # Min range = 0 --> 1
     # Max range = 100 --> 255
     if mode == "depth":
