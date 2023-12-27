@@ -5,6 +5,7 @@ from copy import deepcopy
 import cv2
 import numpy as np
 
+
 try:
     from ipywidgets import interact, widgets
 except ModuleNotFoundError as e:
@@ -14,9 +15,10 @@ from avstack.environment.objects import VehicleState
 from avstack.geometry import bbox
 from avstack.modules.perception.detections import BoxDetection
 
-# from avapi.evaluation import ResultManager, color_from_object_type
-
 from .snapshot import show_image_with_boxes
+
+
+# from avapi.evaluation import ResultManager, color_from_object_type
 
 
 # ========================================================
@@ -178,7 +180,6 @@ def replay_track_results(
     """Tracks without showing perception data
     extent in standard (lidar) coordinates
     """
-
 
     import matplotlib.pyplot as plt
     from matplotlib.widgets import Slider

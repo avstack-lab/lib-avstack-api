@@ -2,9 +2,9 @@ import cv2
 import numpy as np
 
 
-
 def get_lidar_color(value, mode="depth"):
     import matplotlib.pyplot as plt
+
     lidar_cmap = plt.cm.get_cmap("hsv", 256)
     lidar_cmap = np.array([lidar_cmap(i) for i in range(256)])[:, :3] * 255
 
@@ -71,8 +71,8 @@ def draw_projected_box3d(
         return image
 
     # heuristic checks to prevent weird "twisting"
-    if qs[0,1] < qs[4,1]:
-        if qs[1,1] >= qs[5,1]:
+    if qs[0, 1] < qs[4, 1]:
+        if qs[1, 1] >= qs[5, 1]:
             return image
 
     # show corners

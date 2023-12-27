@@ -2,6 +2,7 @@ import math
 
 import numpy as np
 
+
 # import matplotlib
 # matplotlib.rcParams['pdf.fonttype'] = 42
 # matplotlib.rcParams['ps.fonttype'] = 42
@@ -238,7 +239,7 @@ def _base_bar_plot(
     write_number=True,
     min_bar_show=-np.inf,
     is_int=False,
-    figsize=(7,5),
+    figsize=(7, 5),
     fontsize=14,
     reverse_subbars=False,
     reverse_bars=False,
@@ -273,7 +274,9 @@ def _base_bar_plot(
 
     # make the plot
     fig, ax = plt.subplots(figsize=figsize)
-    colors = plt.get_cmap(cmap)(color_bias + color_squeeze*np.linspace(0.0, 0.85, len(vals)))
+    colors = plt.get_cmap(cmap)(
+        color_bias + color_squeeze * np.linspace(0.0, 0.85, len(vals))
+    )
 
     # outer loop is over runs
     handles = []
@@ -299,20 +302,35 @@ def _base_bar_plot(
                     labels.append(vtitle)
                     first = False
                 if write_number:
-                    ax.bar_label(bars, labels=[f'{vals_run[k]:d}' if is_int else f'{vals_run[k]:.2f}'], fontsize=int(fontsize*0.9))
+                    ax.bar_label(
+                        bars,
+                        labels=[f"{vals_run[k]:d}" if is_int else f"{vals_run[k]:.2f}"],
+                        fontsize=int(fontsize * 0.9),
+                    )
     # set additional plot parameters
     ax.set_yticks(range(len(keys)))
     ax.set_yticklabels(kloops)
-    ax.legend(reversed(handles), reversed(labels), fancybox=True, shadow=True, loc='upper center', bbox_to_anchor=(0.60, 0.08))
+    ax.legend(
+        reversed(handles),
+        reversed(labels),
+        fancybox=True,
+        shadow=True,
+        loc="upper center",
+        bbox_to_anchor=(0.60, 0.08),
+    )
     ax.set_xlabel(xlabel)
-    ax.xaxis.set_label_position('top') 
+    ax.xaxis.set_label_position("top")
     ax.xaxis.set_ticklabels([])
     ax.set_yticklabels(ax.get_yticklabels(), rotation=45)
     # ax.set_title(title)
     # set plot fonts
-    for item in ([ax.yaxis.label] +
-             ax.get_xticklabels() + ax.get_yticklabels() + ax.get_legend().get_texts()):
+    for item in (
+        [ax.yaxis.label]
+        + ax.get_xticklabels()
+        + ax.get_yticklabels()
+        + ax.get_legend().get_texts()
+    ):
         item.set_fontsize(fontsize)
-    ax.title.set_fontsize(int(fontsize*1.2))
-    ax.xaxis.label.set_fontsize(int(fontsize*1.4))
+    ax.title.set_fontsize(int(fontsize * 1.2))
+    ax.xaxis.label.set_fontsize(int(fontsize * 1.4))
     return fig, ax

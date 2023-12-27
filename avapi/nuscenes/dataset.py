@@ -54,7 +54,10 @@ class nuScenesManager(_nuManager):
             self.scene_name_to_index[sc["name"]] = i
             self.scene_number_to_index[int(sc["name"].replace("scene-", ""))] = i
             self.index_to_scene[i] = sc["name"]
-        self.splits_scenes = {k:[v for v in vs if v in self.scene_name_to_index] for k, vs in splits_scenes.items()}
+        self.splits_scenes = {
+            k: [v for v in vs if v in self.scene_name_to_index]
+            for k, vs in splits_scenes.items()
+        }
 
     def list_scenes(self):
         self.nuX.list_scenes()

@@ -19,10 +19,10 @@ from avstack.modules.assignment import (
 )
 from tqdm import tqdm
 
-from avapi.utils import get_indices_in_folder, parse_color_string, color_from_object_type
+from avapi.utils import color_from_object_type, get_indices_in_folder
+
 from ..visualize import snapshot
 from .metrics import precision, recall
-
 
 
 # =============================================

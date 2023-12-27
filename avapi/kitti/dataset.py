@@ -167,7 +167,11 @@ class KittiObjectDataset(BaseSceneDataset):
         pos = Position(np.zeros((3,)), reference)
         rot = Attitude(np.quaternion(1), reference)
         box = Box3D(
-            pos, rot, [h, w, l], where_is_t="bottom", ID=-1,
+            pos,
+            rot,
+            [h, w, l],
+            where_is_t="bottom",
+            ID=-1,
         )  # TODO: this doesn't seem right
         ego.set(t=self.get_timestamp(frame), position=pos, box=box, attitude=rot)
         return ego

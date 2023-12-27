@@ -9,7 +9,7 @@ from avstack.environment.objects import VehicleState
 from avstack.geometry import Box2D, Box3D, bbox
 from avstack.geometry.transformations import project_to_image
 from avstack.modules.perception.detections import BoxDetection, MaskDetection
-from avstack.modules.tracking.tracks import BasicBoxTrack3D, BasicBoxTrack2D
+from avstack.modules.tracking.tracks import BasicBoxTrack2D, BasicBoxTrack3D, GroupTrack
 from PIL import Image
 
 from avapi.utils import parse_color_string
@@ -36,7 +36,7 @@ def show_image(img, extent=None, axis=False, inline=True, grayscale=False):
     if inline:
         pil_im = Image.fromarray(img)
         plt.figure(figsize=[2 * x for x in plt.rcParams["figure.figsize"]])
-        plt.imshow(pil_im, extent=extent, cmap=('gray' if grayscale else None))
+        plt.imshow(pil_im, extent=extent, cmap=("gray" if grayscale else None))
         if not axis:
             plt.axis("off")
         plt.show()
@@ -149,10 +149,14 @@ def show_image_with_boxes(
 
         # Show box
         if isinstance(box, Box2D) or (
-            isinstance(box, (VehicleState, BoxDetection, MaskDetection, BasicBoxTrack2D))
+            isinstance(
+                box, (VehicleState, BoxDetection, MaskDetection, BasicBoxTrack2D)
+            )
             and isinstance(box.box, Box2D)
         ):
-            if isinstance(box, (VehicleState, BoxDetection, MaskDetection, BasicBoxTrack2D)):
+            if isinstance(
+                box, (VehicleState, BoxDetection, MaskDetection, BasicBoxTrack2D)
+            ):
                 if isinstance(box, MaskDetection):
                     mask = box.mask
                 box = box.box
@@ -165,9 +169,13 @@ def show_image_with_boxes(
             )
             bl_edge = (box.xmin, box.ymin)
             add_ID_to_image(img1, bl_edge, ID, fontscale=fontscale)
-        elif isinstance(box, (Box3D, BasicBoxTrack3D)) or (
-            isinstance(box, (VehicleState, BoxDetection, MaskDetection))
-            and isinstance(box.box, Box3D)
+        elif (
+            isinstance(box, (Box3D, BasicBoxTrack3D))
+            or (
+                isinstance(box, (VehicleState, BoxDetection, MaskDetection))
+                and isinstance(box.box, Box3D)
+            )
+            or (isinstance(box, GroupTrack) and isinstance(box.state, BasicBoxTrack3D))
         ):
             if isinstance(box, (VehicleState, BasicBoxTrack3D)):
                 box = box.box
@@ -175,6 +183,8 @@ def show_image_with_boxes(
                 if isinstance(box, MaskDetection):
                     mask = box.mask
                 box = box.box
+            elif isinstance(box, GroupTrack):
+                box = box.state.box
             if maskfilters.box_in_fov(box, img.calibration):
                 corners_3d_in_image = box.project_corners_to_2d_image_plane(
                     img.calibration
@@ -213,16 +223,17 @@ def show_image_with_boxes(
             if (len(img.shape) == 3) and (img.shape[2] == 3):
                 mask_color = np.array([0, 255, 0], dtype="uint8")
                 mask_img = np.where(mask.data[..., None], mask_color, img1)
-                img1 = cv2.addWeighted(img1, 0.7, mask_img, 0.3, 0) 
+                img1 = cv2.addWeighted(img1, 0.7, mask_img, 0.3, 0)
             else:
                 mask_color = np.array([255], dtype="uint8")
                 mask_img = np.where(mask.data, mask_color, img1)
                 img1 = cv2.addWeighted(img1, 1.0, mask_img, 0, 0)
 
-
     # Plot results-----------------------
     if show:
-        show_image(img1, inline=inline, grayscale=(len(img.shape)<3 or img.shape[2]==1))
+        show_image(
+            img1, inline=inline, grayscale=(len(img.shape) < 3 or img.shape[2] == 1)
+        )
     if return_images:
         return img1
 

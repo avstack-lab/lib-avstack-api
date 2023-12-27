@@ -219,7 +219,7 @@ class CarlaSceneDataset(BaseSceneDataset):
     @property
     def frames(self):
         return list(self.ego_frame_to_ts.keys())
-    
+
     @property
     def timestamps(self):
         return list(self.ego_frame_to_ts.values())
