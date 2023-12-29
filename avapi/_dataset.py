@@ -1,20 +1,16 @@
-# -*- coding: utf-8 -*-
-# @Author: Spencer H
-# @Date:   2022-08-08
-# @Last Modified by:   spencer@primus
-# @Last Modified date: 2022-09-29
-# @Description:
-"""
-
-"""
-
 import json
 import os
 import random
+from typing import Tuple, Union
 
 import numpy as np
 from avstack import calibration, sensors
-from avstack.environment.objects import ObjectStateDecoder, Occlusion, VehicleState
+from avstack.environment.objects import (
+    ObjectState,
+    ObjectStateDecoder,
+    Occlusion,
+    VehicleState,
+)
 from avstack.geometry import (
     Acceleration,
     AngularVelocity,
@@ -143,7 +139,7 @@ class BaseSceneDataset:
         ego_reference = self.get_ego_reference(frame)
         return self._load_calibration(frame, sensor=sensor, ego_reference=ego_reference)
 
-    def get_ego(self, frame):
+    def get_ego(self, frame) -> ObjectState:
         return self._load_ego(frame)
 
     def get_ego_reference(self, frame):
@@ -263,8 +259,13 @@ class BaseSceneDataset:
             )
         return objs
 
-    def get_objects_global(self, frame, max_dist=None, **kwargs):
-        return self._load_objects_global(frame, **kwargs)
+    def get_objects_global(
+        self,
+        frame,
+        max_dist: Union[Tuple[ReferenceFrame, float], None] = None,
+        **kwargs,
+    ):
+        return self._load_objects_global(frame, max_dist=max_dist, **kwargs)
 
     def get_number_of_objects(self, frame, **kwargs):
         return self._number_objects_from_file(frame, **kwargs)

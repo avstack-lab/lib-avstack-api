@@ -140,8 +140,10 @@ class ResultManager:
         no_white=False,
         no_black=False,
         assign_algorithm="greedy",  # greedy is much faster
+        debug: bool = True,
     ):
         """ """
+        self.debug = debug
         self.idx = idx
         self.metric = metric
         self.radius = radius
@@ -224,6 +226,7 @@ class ResultManager:
             threshold,
             self.radius,
             self.assign_algorithm,
+            debug=self.debug,
         )
         self.A = A
 
@@ -427,36 +430,33 @@ class ResultManager:
             raise IOError("Must pass in something")
         self.run_assignment()
 
-    def visualize(self, image=None, lidar=None, projection="bev"):
+    def visualize(self, image=None, lidar=None, projection="bev", **kwargs):
         # Get colors
         objects_all = np.hstack([self.detections, self.truths])
         colors_all = self.colors["detections"] + self.colors["truths"]
 
         # ----- Show result in some projection
-        if not isinstance(projection, list):
-            projection = [projection]
-        for proj in projection:
-            if proj == "bev":
-                """Takes 3D result and projects into BEV"""
-                assert lidar is not None
-                snapshot.show_lidar_bev_with_boxes(
-                    point_cloud=lidar, boxes=objects_all, box_colors=colors_all
-                )
-            elif proj == "2d":
-                """Assume front-view camera result"""
-                assert image is not None
-                snapshot.show_image_with_boxes(
-                    img=image,
-                    boxes=objects_all,
-                    box_colors=colors_all,
-                    show3d=False,
-                    inline=True,
-                )
-            elif proj == "fv":
-                """Takes 3D result and projects into FV"""
-                raise NotImplementedError
-            else:
-                raise NotImplementedError
+        if projection == "bev":
+            """Takes 3D result and projects into BEV"""
+            assert lidar is not None
+            output = snapshot.show_lidar_bev_with_boxes(
+                point_cloud=lidar, boxes=objects_all, box_colors=colors_all, **kwargs
+            )
+        elif projection == "2d":
+            """Assume front-view camera result"""
+            assert image is not None
+            output = snapshot.show_image_with_boxes(
+                img=image,
+                boxes=objects_all,
+                box_colors=colors_all,
+                **kwargs,
+            )
+        elif projection == "fv":
+            """Takes 3D result and projects into FV"""
+            raise NotImplementedError
+        else:
+            raise NotImplementedError
+        return output
 
 
 def associate_detections_truths(
@@ -466,6 +466,7 @@ def associate_detections_truths(
     threshold=0.1,
     radius=None,
     assign_algorithm="gnn",
+    debug: bool = True,
 ):
     """
     Determine associations, false positives, and false negatives
@@ -499,7 +500,7 @@ def associate_detections_truths(
         A = np.zeros((nr, nc))
     else:
         if "iou" in metric.lower():
-            A = build_A_from_iou(detections, truths)
+            A = build_A_from_iou(detections, truths, debug=debug)
         else:
             raise NotImplementedError(metric)
 

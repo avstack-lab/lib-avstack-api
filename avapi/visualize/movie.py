@@ -43,16 +43,22 @@ def make_movie_from_DM(
 def make_movie(
     raw_imgs, boxes, fps=10, name="untitled", save=False, show_in_notebook=True
 ):
+    from avapi.evaluation import ResultManager
 
     # process images (adding boxes to raw images)
     processed_imgs = []
     print("Processing images and boxes")
     for img, box in tqdm(zip(raw_imgs, boxes), total=len(boxes)):
-        processed_imgs.append(
-            avapi.visualize.snapshot.show_image_with_boxes(
-                img, box, show=False, return_images=True
+        if isinstance(box, ResultManager):
+            img_out = box.visualize(
+                image=img, projection="2d", show=False, return_image=True
             )
-        )
+        else:
+            img_out = avapi.visualize.snapshot.show_image_with_boxes(
+                img, box, show=False, return_image=True
+            )
+        processed_imgs.append(img_out)
+
     print("done")
     height, width, layers = processed_imgs[0].shape
     size = (width, height)

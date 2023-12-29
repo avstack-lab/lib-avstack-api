@@ -104,7 +104,7 @@ def show_image_with_boxes(
     show_IDs=True,
     fontscale=1,
     show=True,
-    return_images=False,
+    return_image=False,
     addbox=[],
 ):
     """Show image with bounding boxes"""
@@ -234,7 +234,7 @@ def show_image_with_boxes(
         show_image(
             img1, inline=inline, grayscale=(len(img.shape) < 3 or img.shape[2] == 1)
         )
-    if return_images:
+    if return_image:
         return img1
 
 
@@ -340,11 +340,10 @@ def show_lidar_bev_with_boxes(
         elif (
             isinstance(box, (VehicleState, Box3D))
             or (isinstance(box, BoxDetection) and isinstance(box.box, Box3D))
+            or (isinstance(box, BasicBoxTrack3D))
             or (isinstance(box, GroupTrack) and isinstance(box.state, BasicBoxTrack3D))
         ):
-            if isinstance(box, VehicleState):
-                box = box.box
-            elif isinstance(box, BoxDetection):
+            if isinstance(box, (BoxDetection, BasicBoxTrack3D, VehicleState)):
                 box = box.box
             elif isinstance(box, GroupTrack):
                 box = box.state.box

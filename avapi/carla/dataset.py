@@ -1,19 +1,12 @@
-# -*- coding: utf-8 -*-
-# @Author: Spencer H
-# @Date:   2022-09-28
-# @Last Modified by:   spencer@primus
-# @Last Modified date: 2022-09-29
-# @Description:
-"""
-CARLA dataset manager on AVstack conventions
-"""
 import glob
 import json
 import os
+from typing import Tuple, Union
 
 import numpy as np
 from avstack import calibration
 from avstack.environment import ObjectStateDecoder
+from avstack.geometry import GlobalOrigin3D, ReferenceFrame
 from cv2 import imread
 from tqdm import tqdm
 
@@ -355,10 +348,34 @@ class CarlaSceneDataset(BaseSceneDataset):
             ]
         )
 
-    def _load_objects_global(self, frame, whitelist_types="all", ignore_types=[]):
+    def _load_objects_global(
+        self,
+        frame,
+        whitelist_types="all",
+        ignore_types=[],
+        include_ego=True,
+        max_dist: Union[Tuple[ReferenceFrame, float], None] = None,
+    ):
         timestamp = None
         filepath = self.get_object_file(frame, timestamp, is_ego=False, is_global=True)
-        objs = self._read_objects(filepath)
+        objs = list(self._read_objects(filepath))
+
+        # load the ego object as well
+        if include_ego:
+            ego_as_object = self.get_ego(frame).change_reference(
+                GlobalOrigin3D, inplace=False
+            )
+            objs.append(ego_as_object)
+
+        # filter objects if they fit max distance
+        if max_dist:
+            objs = [
+                obj
+                for obj in objs
+                if obj.position.change_reference(max_dist[0], inplace=False).norm()
+                < max_dist[1]
+            ]
+
         return np.array(
             [
                 obj
