@@ -5,6 +5,7 @@ from typing import Tuple, Union
 
 import numpy as np
 from avstack import calibration
+from avstack.datastructs import DataContainerDecoder
 from avstack.environment import ObjectStateDecoder
 from avstack.geometry import GlobalOrigin3D, ReferenceFrame
 from cv2 import imread
@@ -46,7 +47,7 @@ def run_dataset_postprocessing(data_dir):
                     ]
                 )
                 global_file = CSM.get_object_file(
-                    frame=frame, timestamp=None, is_ego=False, is_global=True
+                    frame=frame, timestamp=None, is_agent=False, is_global=True
                 )
                 file = os.path.join(obj_dir, sensor, global_file.split("/")[-1])
                 os.makedirs(os.path.dirname(file), exist_ok=True)
@@ -94,18 +95,6 @@ class CarlaSceneDataset(BaseSceneDataset):
     CFG["num_lidar_features"] = 4
     nominal_whitelist_types = _nominal_whitelist_types
     nominal_ignore_types = _nominal_ignore_types
-    sensors = {
-        "lidar": "LIDAR_TOP",
-        "main_lidar": "LIDAR_TOP",
-        "camera": "CAM_FRONT",
-        "main_camera": "CAM_FRONT",
-        "radar": "RADAR_FRONT",
-        "main_radar": "RADAR_FRONT",
-        "semseg": "CAM_FRONT_SEMSEG",
-        "main_semseg": "CAM_FRONT_SEMSEG",
-        "depth": "CAM_FRONT_DEPTH",
-        "main_depth": "CAM_FRONT_DEPTH",
-    }
 
     def __init__(
         self,
@@ -122,30 +111,38 @@ class CarlaSceneDataset(BaseSceneDataset):
 
         # -- object and ego files
         self.obj_folder = os.path.join(self.scene_path, "objects")
+        if not os.path.exists(os.path.join(self.obj_folder)):
+            raise RuntimeError(
+                "Could not find object folder {}".format(self.obj_folder)
+            )
         self.obj_local_folder = os.path.join(self.scene_path, "objects_sensor")
-        ego_files = {"timestamp": {}, "frame": {}}
+        agent_files = {"timestamp": {}, "frame": {}}
         npc_files = {"timestamp": {}, "frame": {}}
-        ego_frame_to_ts = {}
+        agent_frame_to_ts = {}
         npc_frame_to_ts = {}
+        all_ts = set()
+        all_frames = set()
         for filename in sorted(glob.glob(os.path.join(self.obj_folder, "*.txt"))):
             filename = filename.split("/")[-1]
-            ts, frame, _ = filename.split("-")
-            ts = float(ts.split("_")[1])
-            frame = int(frame.split(".")[0].split("_")[1])
-            if "ego" in filename:
-                ego_files["timestamp"][ts] = filename
-                ego_files["frame"][frame] = filename
-                ego_frame_to_ts[frame] = ts
-            elif "npc" in filename:
+            _, id_str, frame, ts = filename.split("-")
+            ts = float(".".join(ts.split(".")[0:2]))
+            frame = int(frame)
+            if "actors" in id_str:
+                agent_files["timestamp"][ts] = filename
+                agent_files["frame"][frame] = filename
+                agent_frame_to_ts[frame] = ts
+            elif "npc" in id_str:
                 # -- global frame
                 npc_files["timestamp"][ts] = filename
                 npc_files["frame"][frame] = filename
                 npc_frame_to_ts[frame] = ts
             else:
                 raise NotImplementedError(filename)
-        self.ego_frame_to_ts = ego_frame_to_ts
+            all_frames.add(frame)
+            all_ts.add(ts)
+        self.agent_frame_to_ts = agent_frame_to_ts
         self.npc_frame_to_ts = npc_frame_to_ts
-        self.ego_files = ego_files
+        self.agent_files = agent_files
         self.npc_files = npc_files
 
         # -- dynamically create sensor ID mappings
@@ -155,123 +152,168 @@ class CarlaSceneDataset(BaseSceneDataset):
         sensor_frame_to_ts = {}
         sensor_frames = {}
         file_endings = {}
-        sensor_data_folder = os.path.join(self.scene_path, "sensor_data")
+        all_agent_IDs = set()
+        sensor_data_folder = os.path.join(self.scene_path, "data")
         if os.path.exists(sensor_data_folder):
             self.sensor_data_folder = sensor_data_folder
             for sens in sorted(next(os.walk(self.sensor_data_folder))[1]):
-                if not len(sens.split("-")) == 2:
+                if not len(sens.split("-")) == 3:
                     raise ValueError(f"Cannot understand sensor data folder {sens}")
-                name, ID = sens.split("-")
-                sensor_IDs[name] = int(ID)
-                if name not in self.sensors:
-                    self.sensors[name] = name
-                sensor_folders[name] = os.path.join(sensor_data_folder, sens)
-                sensor_file_post[name] = {"timestamp": {}, "frame": {}}
-                sensor_frame_to_ts[name] = {}
-                sensor_frames[name] = []
+                name, sensor_ID, agent_ID = sens.split("-")
+                agent_ID = int(agent_ID)
+                all_agent_IDs.add(agent_ID)
+                sensor_ID = f"{name}-{sensor_ID}"
+
+                # make data structures
+                if agent_ID not in sensor_IDs:
+                    sensor_IDs[agent_ID] = []
+                    sensor_folders[agent_ID] = {}
+                    sensor_file_post[agent_ID] = {}
+                    sensor_frame_to_ts[agent_ID] = {}
+                    sensor_frames[agent_ID] = {}
+                    file_endings[agent_ID] = {}
+
+                # populate data structures
+                sensor_IDs[agent_ID].append(sensor_ID)
+                sensor_folders[agent_ID][sensor_ID] = os.path.join(
+                    sensor_data_folder, sens
+                )
+                sensor_file_post[agent_ID][sensor_ID] = {"timestamp": {}, "frame": {}}
+                sensor_frame_to_ts[agent_ID][sensor_ID] = {}
+                sensor_frames[agent_ID][sensor_ID] = []
+
                 # within each folder, parse the sensor timestamps and frames
                 for i, filename in enumerate(
-                    sorted(glob.glob(os.path.join(sensor_folders[name], "data-*")))
+                    sorted(
+                        glob.glob(
+                            os.path.join(sensor_folders[agent_ID][sensor_ID], "data-*")
+                        )
+                    )
                 ):
+                    # parse timestamp and frames
                     filename = filename.split("/")[-1]
                     if i == 0:
-                        file_endings[name] = "." + filename.split(".")[-1]
+                        file_endings[agent_ID][sensor_ID] = (
+                            "." + filename.split(".")[-1]
+                        )
                     _, ts, frame = filename.split("-")
                     ts = float(ts.split("_")[1])
                     frame = int(frame.split(".")[0].split("_")[1])
+                    sensor_frame_to_ts[agent_ID][sensor_ID][frame] = float(ts)
+                    sensor_frames[agent_ID][sensor_ID].append(frame)
+
+                    # save the filename
                     fname_post = filename.replace("data-", "")[:-4]
                     if fname_post.endswith("."):
                         fname_post = fname_post[:-1]
-                    sensor_file_post[name]["timestamp"][ts] = fname_post
-                    sensor_file_post[name]["frame"][frame] = fname_post
-                    sensor_frame_to_ts[name][frame] = float(ts)
-                    sensor_frames[name].append(frame)
-                sensor_frames[name] = sorted(sensor_frames[name])
+                    sensor_file_post[agent_ID][sensor_ID]["timestamp"][ts] = fname_post
+                    sensor_file_post[agent_ID][sensor_ID]["frame"][frame] = fname_post
+
+                sensor_frames[agent_ID][sensor_ID] = sorted(
+                    sensor_frames[agent_ID][sensor_ID]
+                )
         else:
             raise FileNotFoundError(
                 "Cannot find data folder {}".format(sensor_data_folder)
             )
+        self.frames = np.asarray(sorted(all_frames))
+        self.timestamps = np.asarray(sorted(all_ts))
+        self.agent_IDs = sorted(all_agent_IDs)
+        self.sensor_IDs = sensor_IDs
         self.sensor_folders = sensor_folders
         self.sensor_file_post = sensor_file_post
-        # HACK
-        sensor_frame_to_ts["ego"] = ego_frame_to_ts
-        sensor_frame_to_ts["npcs"] = npc_frame_to_ts
         self.sensor_frame_to_ts = sensor_frame_to_ts
         self.sensor_frames = sensor_frames
         self.file_endings = file_endings
-        self.sensor_IDs = sensor_IDs
-        self.framerate = 1 / np.median(
-            np.diff(list(self.sensor_frame_to_ts[self.sensors["main_camera"]].values()))
-        )
         super().__init__(whitelist_types, ignore_types)
-
-    @property
-    def frames_camera(self):
-        return list(self.sensor_frames[self.sensors["main_camera"]])
-
-    @property
-    def frames(self):
-        return list(self.ego_frame_to_ts.keys())
-
-    @property
-    def timestamps(self):
-        return list(self.ego_frame_to_ts.values())
 
     def __str__(self):
         return f"CARLA Object Datset of folder: {self.scene_path}"
 
-    def get_object_file(self, frame, timestamp, is_ego, is_global, sensor=None):
+    def get_object_file(
+        self, frame, timestamp, is_agent, is_global, agent=None, sensor=None
+    ):
         check_xor_for_none(frame, timestamp)
         if frame is not None:
-            if is_ego:
-                file_post = self.ego_files["frame"][frame]
+            if is_agent:
+                file_post = self.agent_files["frame"][frame]
             else:
                 file_post = self.npc_files["frame"][frame]
+                if sensor:
+                    file_post = file_post.replace("npcs", "objects")
         else:
             raise
         if is_global:
             filepath = os.path.join(self.obj_folder, file_post)
         else:
             assert sensor is not None
-            filepath = os.path.join(self.obj_local_folder, sensor, file_post)
+            filepath = os.path.join(
+                self.obj_local_folder, f"{sensor}-{agent}", file_post
+            )
         return filepath
 
-    def get_sensor_file(self, frame, timestamp, sensor, file_type):
+    def get_sensor_file(self, frame, timestamp, sensor, agent, file_type):
         check_xor_for_none(frame, timestamp)
         if frame is not None:
-            file_post = self.sensor_file_post[sensor]["frame"][frame]
+            file_post = self.sensor_file_post[agent][sensor]["frame"][frame]
         else:
             # TODO: ALLOW FOR INTERPOLATION OR NEAREST????
-            file_post = self.sensor_file_post[sensor]["timestamp"][timestamp]
+            file_post = self.sensor_file_post[agent][sensor]["timestamp"][timestamp]
         filepath = os.path.join(
-            self.sensor_folders[sensor], file_type + "-" + file_post
+            self.sensor_folders[agent][sensor], file_type + "-" + file_post
         )
         return filepath
 
-    def _load_sensor_data_filepath(self, frame, sensor):
+    def get_sensor_name(self, sensor, agent):
+        return sensor
+
+    def get_agents(self, frame: int):
+        return self._load_agents(frame)
+
+    def get_sensor_ID(self, sensor: str, agent: int):
+        return f"{sensor}-{agent}"
+
+    def get_ego_reference(self, *args, **kwargs):
+        return None
+
+    def _load_agents(self, frame):
+        DC = DataContainerDecoder
+        DC.data_decoder = ObjectStateDecoder
+        timestamp = None
+        filepath = self.get_object_file(frame, timestamp, is_agent=True, is_global=True)
+        with open(filepath, "r") as f:
+            agents = json.load(f, cls=DC)
+        return agents
+
+    def _load_sensor_data_filepath(self, frame, sensor, agent):
         return (
-            self.get_sensor_file(frame, None, sensor, "data")
-            + self.file_endings[sensor]
+            self.get_sensor_file(frame, None, sensor, agent, "data")
+            + self.file_endings[agent][sensor]
         )
 
-    def _load_frames(self, sensor: str):
-        return self.sensor_frames[sensor]
+    def _load_frames(self, sensor: str, agent: int):
+        return self.sensor_frames[agent][sensor]
 
-    def _load_timestamp(self, frame, sensor, utime=False):
-        return self.sensor_frame_to_ts[sensor][frame]
+    def _load_timestamp(self, frame, sensor=None, agent=None, utime=False):
+        if (sensor is None) and (agent is None):
+            return self.timestamps[self.frames == frame][0]
+        else:
+            return self.sensor_frame_to_ts[agent][sensor][frame]
 
-    def _load_calibration(self, frame, sensor, *args, **kwargs):
+    def _load_calibration(self, frame, sensor, agent, *args, **kwargs):
         timestamp = None
-        filepath = self.get_sensor_file(frame, timestamp, sensor, "calib") + ".txt"
+        filepath = (
+            self.get_sensor_file(frame, timestamp, sensor, agent, "calib") + ".txt"
+        )
         with open(filepath, "r") as f:
             calib = json.load(f, cls=calibration.CalibrationDecoder)
         return calib
 
-    def _load_im_general(self, frame, sensor):
+    def _load_im_general(self, frame, sensor, agent):
         timestamp = None
         filepath = (
-            self.get_sensor_file(frame, timestamp, sensor, "data")
-            + self.file_endings[sensor]
+            self.get_sensor_file(frame, timestamp, sensor, agent, "data")
+            + self.file_endings[agent][sensor]
         )
         assert os.path.exists(filepath), filepath
         try:
@@ -280,20 +322,20 @@ class CarlaSceneDataset(BaseSceneDataset):
             print(filepath)
             raise e
 
-    def _load_image(self, frame, sensor):
-        return self._load_im_general(frame, sensor)
+    def _load_image(self, frame, sensor, agent):
+        return self._load_im_general(frame, sensor, agent)
 
-    def _load_semseg_image(self, frame, sensor):
-        return self._load_im_general(frame, sensor)
+    def _load_semseg_image(self, frame, sensor, agent):
+        return self._load_im_general(frame, sensor, agent)
 
-    def _load_depth_image(self, frame, sensor):
-        return self._load_im_general(frame, sensor)
+    def _load_depth_image(self, frame, sensor, agent):
+        return self._load_im_general(frame, sensor, agent)
 
-    def _load_lidar(self, frame, sensor, filter_front, with_panoptic=False):
+    def _load_lidar(self, frame, sensor, agent, filter_front, with_panoptic=False):
         timestamp = None
         filepath = (
-            self.get_sensor_file(frame, timestamp, sensor, "data")
-            + self.file_endings[sensor]
+            self.get_sensor_file(frame, timestamp, sensor, agent, "data")
+            + self.file_endings[agent][sensor]
         )
         assert os.path.exists(filepath), filepath
         if filepath.endswith(".ply"):
@@ -308,35 +350,32 @@ class CarlaSceneDataset(BaseSceneDataset):
         else:
             return pcd
 
-    def _load_radar(self, frame, sensor):
+    def _load_radar(self, frame, sensor, agent):
         timestamp = None
         filepath = (
-            self.get_sensor_file(frame, timestamp, sensor, "data")
-            + self.file_endings[sensor]
+            self.get_sensor_file(frame, timestamp, sensor, agent, "data")
+            + self.file_endings[agent][sensor]
         )
         assert os.path.exists(filepath), filepath
         rad = np.fromfile(filepath, dtype=np.float32).reshape((-1, 4))
         return rad
 
-    def _load_ego(self, frame):
-        timestamp = None
-        filepath = self.get_object_file(frame, timestamp, is_ego=True, is_global=True)
-        with open(filepath, "r") as f:
-            ego = json.load(f, cls=ObjectStateDecoder)
-        return ego
-
     def _load_objects(
         self,
         frame,
         sensor,
+        agent,
         whitelist_types=["car", "truck", "bicycle", "motorcycle"],
         ignore_types=[],
     ):
-        if sensor is None:
-            sensor = "CAM_FRONT"
         timestamp = None
         filepath = self.get_object_file(
-            frame, timestamp, sensor=sensor, is_ego=False, is_global=False
+            frame,
+            timestamp,
+            sensor=sensor,
+            agent=agent,
+            is_agent=False,
+            is_global=False,
         )
         objs = self._read_objects(filepath)
         return np.array(
@@ -353,19 +392,30 @@ class CarlaSceneDataset(BaseSceneDataset):
         frame,
         whitelist_types="all",
         ignore_types=[],
-        include_ego=True,
+        include_agents=True,
+        ignore_static_agents=False,
         max_dist: Union[Tuple[ReferenceFrame, float], None] = None,
     ):
         timestamp = None
-        filepath = self.get_object_file(frame, timestamp, is_ego=False, is_global=True)
-        objs = list(self._read_objects(filepath))
+        filepath = self.get_object_file(
+            frame, timestamp, is_agent=False, is_global=True
+        )
+        objs = self._read_objects(filepath)
+        objs = list(objs) if objs.size > 0 else []
 
-        # load the ego object as well
-        if include_ego:
-            ego_as_object = self.get_ego(frame).change_reference(
-                GlobalOrigin3D, inplace=False
-            )
-            objs.append(ego_as_object)
+        # load the ego objects as well
+        if include_agents:
+            agents_as_objects = [
+                agent.change_reference(GlobalOrigin3D, inplace=False)
+                for agent in self.get_agents(frame)
+            ]
+            if ignore_static_agents:
+                agents_as_objects = [
+                    agent
+                    for agent in agents_as_objects
+                    if "static" not in agent.obj_type
+                ]
+            objs.extend(agents_as_objects)
 
         # filter objects if they fit max distance
         if max_dist:
@@ -387,7 +437,9 @@ class CarlaSceneDataset(BaseSceneDataset):
 
     def _number_objects_from_file(self, frame, **kwargs):
         timestamp = None
-        filepath = self.get_object_file(frame, timestamp, is_ego=False, is_global=True)
+        filepath = self.get_object_file(
+            frame, timestamp, is_agent=False, is_global=True
+        )
         with open(filepath, "r") as f:
             lines = f.readlines()
         return len(lines)
@@ -395,13 +447,12 @@ class CarlaSceneDataset(BaseSceneDataset):
     def _read_objects(self, filepath):
         with open(filepath, "r") as f:
             lines = f.readlines()
-        objs = []
-        for line in lines:
-            line = line.rstrip()
-            objs.append(json.loads(line, cls=ObjectStateDecoder))
-        return np.asarray(objs)
+        assert len(lines) == 1
+        DC = DataContainerDecoder
+        DC.data_decoder = ObjectStateDecoder
+        objs = json.loads(lines[0], cls=DC)
+        return np.asarray(objs.data)
 
     def _save_objects(self, frame, objects, folder, file):
-        data_strs = "\n".join([obj.encode() for obj in objects])
         with open(os.path.join(folder, file.format("txt")), "w") as f:
-            f.write(data_strs)
+            f.write(objects.encode())

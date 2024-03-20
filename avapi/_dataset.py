@@ -115,81 +115,92 @@ class BaseSceneDataset:
             frame in self.frames
         ), f"Candidate frame, {frame}, not in frame set {self.frames}"
 
-    def get_sensor_ID(self, sensor):
+    def get_sensor_ID(self, sensor, agent=None):
         try:
             return self.sensor_IDs[sensor]
-        except KeyError as e:
+        except KeyError:
             try:
                 return self.sensor_IDs[self.sensors[sensor]]
-            except KeyError as e2:
-                raise e2
+            except (AttributeError, KeyError):
+                try:
+                    return self.sensor_IDs[agent][sensor]
+                except KeyError as e:
+                    raise e
 
-    def get_sensor_name(self, sensor):
+    def get_sensor_name(self, sensor, agent=None):
         if (sensor is None) or (sensor not in self.sensors):
             return sensor
         else:
             return self.sensors[sensor]
 
-    def get_frames(self, sensor):
-        sensor = self.get_sensor_name(sensor)
-        return self._load_frames(sensor)
+    def get_frames(self, sensor, agent=None):
+        sensor = self.get_sensor_name(sensor, agent=agent)
+        return self._load_frames(sensor, agent=agent)
 
-    def get_calibration(self, frame, sensor):
-        sensor = self.get_sensor_name(sensor)
+    def get_calibration(self, frame, sensor, agent=None):
+        sensor = self.get_sensor_name(sensor, agent)
         ego_reference = self.get_ego_reference(frame)
-        return self._load_calibration(frame, sensor=sensor, ego_reference=ego_reference)
+        return self._load_calibration(
+            frame, agent=agent, sensor=sensor, ego_reference=ego_reference
+        )
 
-    def get_ego(self, frame) -> ObjectState:
+    def get_ego(self, frame, agent=None) -> ObjectState:
         return self._load_ego(frame)
 
-    def get_ego_reference(self, frame):
+    def get_ego_reference(self, frame, agent=None):
         return self.get_ego(frame).as_reference()
 
-    def get_sensor_data_filepath(self, frame, sensor):
-        sensor = self.get_sensor_name(sensor)
+    def get_sensor_data_filepath(self, frame, sensor, agent=None):
+        sensor = self.get_sensor_name(sensor, agent)
         return self._load_sensor_data_filepath(frame, sensor)
 
-    def get_image(self, frame, sensor=None):
-        sensor = self.get_sensor_name(sensor)
-        ts = self.get_timestamp(frame, sensor)
-        data = self._load_image(frame, sensor=sensor)
+    def get_image(self, frame, sensor=None, agent=None):
+        sensor = self.get_sensor_name(sensor, agent=agent)
+        ts = self.get_timestamp(frame, sensor, agent=agent)
+        data = self._load_image(frame, sensor=sensor, agent=agent)
         cam_string = "image-%i" % sensor if isinstance(sensor, int) else sensor
         cam_string = (
             cam_string if sensor is not None else self.get_sensor_name("main_camera")
         )
-        calib = self.get_calibration(frame, cam_string)
+        calib = self.get_calibration(frame, sensor=cam_string, agent=agent)
         return sensors.ImageData(
-            ts, frame, data, calib, self.get_sensor_ID(cam_string), channel_order="rgb"
+            ts,
+            frame,
+            data,
+            calib,
+            self.get_sensor_ID(cam_string, agent),
+            channel_order="rgb",
         )
 
-    def get_semseg_image(self, frame, sensor=None):
+    def get_semseg_image(self, frame, sensor=None, agent=None):
         if sensor is None:
             sensor = self.sensors["semseg"]
-        sensor = self.get_sensor_name(sensor)
+        sensor = self.get_sensor_name(sensor, agent)
         ts = self.get_timestamp(frame, sensor)
         data = self._load_semseg_image(frame, sensor=sensor)
         cam_string = "image-%i" % sensor if isinstance(sensor, int) else sensor
         calib = self.get_calibration(frame, cam_string)
         return sensors.SemanticSegmentationImageData(
-            ts, frame, data, calib, self.get_sensor_ID(cam_string)
+            ts, frame, data, calib, self.get_sensor_ID(cam_string, agent)
         )
 
-    def get_depth_image(self, frame, sensor=None):
+    def get_depth_image(self, frame, sensor=None, agent=None):
         if sensor is None:
             sensor = self.sensors["depth"]
-        sensor = self.get_sensor_name(sensor)
+        sensor = self.get_sensor_name(sensor, agent)
         ts = self.get_timestamp(frame, sensor)
         data = self._load_depth_image(frame, sensor=sensor)
         cam_string = "image-%i" % sensor if isinstance(sensor, int) else sensor
         calib = self.get_calibration(frame, cam_string)
         return sensors.DepthImageData(
-            ts, frame, data, calib, self.get_sensor_ID(cam_string)
+            ts, frame, data, calib, self.get_sensor_ID(cam_string, agent)
         )
 
     def get_lidar(
         self,
         frame,
         sensor=None,
+        agent=None,
         filter_front=False,
         min_range=None,
         max_range=None,
@@ -197,14 +208,20 @@ class BaseSceneDataset:
     ):
         if sensor is None:
             sensor = self.sensors["lidar"]
-        sensor = self.get_sensor_name(sensor)
-        ts = self.get_timestamp(frame, sensor)
-        calib = self.get_calibration(frame, sensor)
+        sensor = self.get_sensor_name(sensor, agent)
+        ts = self.get_timestamp(frame, sensor, agent=agent)
+        calib = self.get_calibration(frame, sensor, agent=agent)
         data = self._load_lidar(
-            frame, sensor, filter_front=filter_front, with_panoptic=with_panoptic
+            frame,
+            sensor=sensor,
+            agent=agent,
+            filter_front=filter_front,
+            with_panoptic=with_panoptic,
         )
         data = PointMatrix3D(data, calib)
-        pc = sensors.LidarData(ts, frame, data, calib, self.get_sensor_ID(sensor))
+        pc = sensors.LidarData(
+            ts, frame, data, calib, self.get_sensor_ID(sensor, agent=agent)
+        )
         if (min_range is not None) or (max_range is not None):
             pc.filter_by_range(min_range, max_range, inplace=True)
         return pc
@@ -213,12 +230,13 @@ class BaseSceneDataset:
         self,
         frame,
         sensor=None,
+        agent=None,
         min_range=None,
         max_range=None,
     ):
         if sensor is None:
             sensor = self.sensors["radar"]
-        sensor = self.get_sensor_name(sensor)
+        sensor = self.get_sensor_name(sensor, agent)
         ts = self.get_timestamp(frame, sensor)
         calib = self.get_calibration(frame, sensor)
         data = self._load_radar(frame, sensor)  # razelrrt data
@@ -231,11 +249,17 @@ class BaseSceneDataset:
         return rad
 
     def get_objects(
-        self, frame, sensor="main_camera", max_dist=None, max_occ=None, **kwargs
+        self,
+        frame,
+        sensor="main_camera",
+        agent=None,
+        max_dist=None,
+        max_occ=None,
+        **kwargs,
     ):
-        reference = self.get_ego_reference(frame)
-        sensor = self.get_sensor_name(sensor)
-        objs = self._load_objects(frame, sensor=sensor, **kwargs)
+        reference = self.get_ego_reference(frame, agent=agent)
+        sensor = self.get_sensor_name(sensor, agent=agent)
+        objs = self._load_objects(frame, sensor=sensor, agent=agent, **kwargs)
         if max_occ is not None:
             objs = np.array(
                 [
@@ -273,11 +297,11 @@ class BaseSceneDataset:
     def get_objects_from_file(self, fname, whitelist_types, max_dist=None):
         return self._load_objects_from_file(fname, whitelist_types, max_dist=max_dist)
 
-    def get_timestamp(self, frame, sensor="lidar", utime=False):
-        sensor = self.get_sensor_name(sensor)
-        return self._load_timestamp(frame, sensor=sensor, utime=utime)
+    def get_timestamp(self, frame, sensor=None, agent=None, utime=False):
+        sensor = self.get_sensor_name(sensor, agent=agent)
+        return self._load_timestamp(frame, sensor=sensor, agent=agent, utime=utime)
 
-    def get_sensor_file_path(self, frame, sensor):
+    def get_sensor_file_path(self, frame, sensor, agent=None):
         return self._get_sensor_file_name(frame, sensor)
 
     def save_calibration(self, frame, calib, folder, **kwargs):
@@ -296,19 +320,19 @@ class BaseSceneDataset:
     def _load_calibration(self, frame, sensor, reference):
         raise NotImplementedError
 
-    def _load_image(self, frame, camera):
+    def _load_image(self, frame, camera, agent=None):
         raise NotImplementedError
 
-    def _load_semseg_image(self, frame, camera):
+    def _load_semseg_image(self, frame, camera, agent=None):
         raise NotImplementedError
 
-    def _load_depth_image(self, frame, camera):
+    def _load_depth_image(self, frame, camera, agent=None):
         raise NotImplementedError
 
-    def _load_lidar(self, frame):
+    def _load_lidar(self, frame, sensor, agent=None):
         raise NotImplementedError
 
-    def _load_objects(self, frame, sensor):
+    def _load_objects(self, frame, sensor, agent=None):
         raise NotImplementedError
 
     def _load_sensor_data_filepath(self, frame, sensor: str):
@@ -636,10 +660,12 @@ class _nuBaseDataset(BaseSceneDataset):
                 raise e  # raise the first exception
         return calib_data
 
-    def _get_sensor_file_name(self, frame, sensor=None):
+    def _get_sensor_file_name(self, frame, sensor=None, agent=None):
         return os.path.join(
             self.data_dir,
-            self._get_sensor_record(frame, self.get_sensor_name(sensor))["filename"],
+            self._get_sensor_record(frame, self.get_sensor_name(sensor, agent))[
+                "filename"
+            ],
         )
 
     def _load_frames(self, sensor: str = None):

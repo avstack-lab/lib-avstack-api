@@ -263,7 +263,7 @@ def add_ID_to_image(img, bl_edge, ID, fontscale=1):
 
 
 def show_lidar_bev_with_boxes(
-    point_cloud,
+    pc,
     boxes=[],
     vectors=[],
     extent=None,
@@ -284,7 +284,7 @@ def show_lidar_bev_with_boxes(
     """
     Show lidar and the detection results (optional) in BEV
 
-    :point_cloud - lidar in the lidar frame
+    :pc - lidar in the lidar frame
     :extent -  3D area in the form
         [[min_x, max_x], [min_y, max_y], [min_z, max_z]]
 
@@ -297,17 +297,14 @@ def show_lidar_bev_with_boxes(
     else:
         boxes = np.asarray([boxes])
     boxes = np.array(
-        [
-            box.change_reference(point_cloud.calibration.reference, inplace=False)
-            for box in boxes
-        ]
+        [box.change_reference(pc.calibration.reference, inplace=False) for box in boxes]
     )
 
     # Filter points
     if extent is not None:
         # Filter lidar outside extent
-        point_filter = maskfilters.filter_points(point_cloud, extent, ground)
-        pc2 = point_cloud[point_filter, :]
+        point_filter = maskfilters.filter_points(pc, extent, ground)
+        pc2 = pc[point_filter, :]
 
         # Filter labels outside extent
         box_filter = maskfilters.filter_boxes_extent(boxes, extent)
@@ -315,7 +312,7 @@ def show_lidar_bev_with_boxes(
         if type(box_colors) in [list, np.ndarray]:
             box_colors = [col for col, yesno in zip(box_colors, box_filter) if yesno]
     else:
-        pc2 = point_cloud.data
+        pc2 = pc.data
 
     # Get maxes and mins
     if pc2.shape[0] > 0:
@@ -351,7 +348,7 @@ def show_lidar_bev_with_boxes(
             raise NotImplementedError(type(box))
 
         # Corners in bev --  ***assumes for now pc z axis is up
-        # box.change_reference(point_cloud.calibration.reference, inplace=False)
+        # box.change_reference(pc.calibration.reference, inplace=False)
         boxes_show.append(box)
         bev_corners = box.corners[:, :2]
         boxes_show_corners.append(bev_corners)
@@ -413,7 +410,7 @@ def show_lidar_bev_with_boxes(
 
     # Add tracks
     for i, vec in enumerate(vectors):
-        vec.change_reference(point_cloud.calibration.reference, inplace=True)
+        vec.change_reference(pc.calibration.reference, inplace=True)
         head = (vec.head.x[:2] - min_arr) / sc_arr
         tail = (vec.tail.x[:2] - min_arr) / sc_arr
         color = (0, 255, 0)
