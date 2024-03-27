@@ -273,7 +273,7 @@ class BaseSceneDataset:
             if sensor == "ego":
                 calib = calibration.Calibration(reference)
             else:
-                calib = self.get_calibration(frame, sensor)
+                calib = self.get_calibration(frame, sensor, agent=agent)
             objs = np.array(
                 [
                     obj

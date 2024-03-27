@@ -254,6 +254,10 @@ class CarlaSceneDataset(BaseSceneDataset):
 
     def get_sensor_file(self, frame, timestamp, sensor, agent, file_type):
         check_xor_for_none(frame, timestamp)
+        if agent is None:
+            raise ValueError(agent)
+        elif sensor is None:
+            raise ValueError(sensor)
         if frame is not None:
             file_post = self.sensor_file_post[agent][sensor]["frame"][frame]
         else:
