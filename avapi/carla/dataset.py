@@ -5,7 +5,7 @@ from typing import Tuple, Union
 
 import numpy as np
 from avstack import calibration
-from avstack.datastructs import DataContainerDecoder
+from avstack.datastructs import DataContainer, DataContainerDecoder
 from avstack.environment import ObjectStateDecoder
 from avstack.geometry import GlobalOrigin3D, ReferenceFrame
 from cv2 import imread
@@ -382,13 +382,16 @@ class CarlaSceneDataset(BaseSceneDataset):
             is_global=False,
         )
         objs = self._read_objects(filepath)
-        return np.array(
-            [
+        return DataContainer(
+            frame=frame,
+            timestamp=self.get_timestamp(frame=frame, sensor=sensor, agent=agent),
+            data=[
                 obj
                 for obj in objs
                 if ((obj.obj_type in whitelist_types) or (whitelist_types == "all"))
                 and (obj.obj_type not in ignore_types)
-            ]
+            ],
+            source_identifier=f"{sensor}-{agent}"
         )
 
     def _load_objects_global(
