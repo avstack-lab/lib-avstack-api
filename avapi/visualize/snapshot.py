@@ -44,8 +44,138 @@ def show_image(img, extent=None, axis=False, inline=True, grayscale=False):
         Image.fromarray(img).show()
 
 
-def show_boxes_bev(boxes):
-    raise NotImplementedError
+def show_boxes_bev(
+    boxes,
+    vectors=[],
+    extent=None,
+    ground=None,
+    box_colors="white",
+    filter_in_im=False,
+    flipx=True,
+    flipy=True,
+    flipxy=True,
+    inline=True,
+    lines=None,
+    line_colors=None,
+    bev_size=[500, 500],
+    colormethod="depth",
+    show=True,
+    return_image=False,
+):
+    min_range, max_range = 0, 0
+    min_width, max_width = 0, 0
+
+    boxes_show = []
+    boxes_show_corners = []
+    for i, box in enumerate(boxes):
+        # Show box
+        if isinstance(box, Box2D) or (
+            isinstance(box, BoxDetection) and isinstance(box.box, Box2D)
+        ):
+            continue  # cannot show 2D boxes
+        elif (
+            isinstance(box, (VehicleState, Box3D))
+            or (isinstance(box, BoxDetection) and isinstance(box.box, Box3D))
+            or (isinstance(box, BasicBoxTrack3D))
+            or (isinstance(box, GroupTrack) and isinstance(box.state, BasicBoxTrack3D))
+        ):
+            if isinstance(box, (BoxDetection, BasicBoxTrack3D, VehicleState)):
+                box = box.box
+            elif isinstance(box, GroupTrack):
+                box = box.state.box
+        else:
+            raise NotImplementedError(type(box))
+        boxes_show.append(box)
+        bev_corners = box.corners[:, :2]
+        boxes_show_corners.append(bev_corners)
+
+        # Update domain based on bbox
+        min_range = min(min_range, min(bev_corners[:, 0]) - 5)
+        max_range = max(max_range, max(bev_corners[:, 0]) + 5)
+        min_width = min(min_width, min(bev_corners[:, 1]) - 2)
+        max_width = max(max_width, max(bev_corners[:, 1]) + 2)
+
+    # define the size of the image and scaling factor
+    img1 = 0 * np.ones([bev_size[0], bev_size[1], 3], dtype=np.uint8)
+    if extent is None:
+        width_scale = (max_width - min_width) / bev_size[0]
+        range_scale = (max_range - min_range) / bev_size[1]
+        min_arr = np.array([min_range, min_width])
+    else:
+        width_scale = (extent[1][1] - extent[1][0]) / bev_size[0]
+        range_scale = (extent[0][1] - extent[0][0]) / bev_size[1]
+        min_arr = np.array([extent[0][0], extent[1][0]])
+    sc_arr = np.array([range_scale, width_scale])
+
+    # Add labels
+    if type(box_colors) not in [list, np.ndarray]:
+        ltmp = np.copy(box_colors)
+        box_colors = [ltmp for _ in range(len(boxes_show))]
+    for i, (box, bev_corners) in enumerate(zip(boxes_show, boxes_show_corners)):
+        if isinstance(box_colors[i], (str, np.ndarray)):
+            lcolor = parse_color_string(box_colors[i])
+        else:
+            assert isinstance(
+                box_colors[i], tuple
+            ), f"{box_colors[i]}, {type(box_colors[i])}"
+            lcolor = box_colors[i]
+        box3d_pts_2d = (bev_corners - min_arr) / sc_arr
+        img1 = draw_projected_box3d(img1, box3d_pts_2d, color=lcolor, thickness=2)
+
+    # Add tracks
+    for i, vec in enumerate(vectors):
+        head = (vec.head.x[:2] - min_arr) / sc_arr
+        tail = (vec.tail.x[:2] - min_arr) / sc_arr
+        color = (0, 255, 0)
+        thickness = 4
+        img1 = cv2.arrowedLine(
+            img1, tuple(map(int, head)), tuple(map(int, tail)), color, thickness
+        )
+
+    # Add lines to the image if passed in
+    if lines is not None:
+
+        def plot_line(img1, line, line_color):
+            """Assume line is a 2xn array"""
+            color = parse_color_string(line_color)
+            for p1, p2 in zip(line[:, :-1].T, line[:, 1:].T):
+                p1_sc = tuple([int(p) for p in (p1 - min_arr) / sc_arr])
+                p2_sc = tuple([int(p) for p in (p2 - min_arr) / sc_arr])
+                cv2.line(img1, p1_sc, p2_sc, color, 5)
+
+        if line_colors is None:
+            line_colors = "white"
+
+        # If line is a list, it is a list of lines which are arrays
+        if type(lines) is list:
+            if type(line_colors) is not list:
+                line_colors = [line_colors for _ in len(lines)]
+            for l, lc in zip(lines, line_colors):
+                plot_line(img1, l, lc)
+        elif type(lines) is np.ndarray:
+            plot_line(img1, lines, line_colors)
+        else:
+            raise RuntimeError("Unknown line type")
+
+    if extent is None:
+        viz_extent = [min_range, max_range, min_width, max_width]
+    else:
+        viz_extent = [*extent[0], *extent[1]]
+
+    if flipx:
+        img1 = np.flip(img1, axis=1)
+        viz_extent = [viz_extent[1], viz_extent[0], viz_extent[2], viz_extent[3]]
+    if flipy:
+        img1 = np.flip(img1, axis=0)
+        viz_extent = [viz_extent[0], viz_extent[1], viz_extent[3], viz_extent[2]]
+    if flipxy:
+        img1 = img1.transpose(1, 0, 2)
+        viz_extent = [viz_extent[2], viz_extent[3], viz_extent[0], viz_extent[1]]
+
+    if show:
+        show_image(img1, extent=viz_extent, inline=inline)
+    if return_image:
+        return img1
 
 
 def show_lidar_on_image(

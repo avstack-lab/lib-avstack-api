@@ -391,7 +391,7 @@ class CarlaSceneDataset(BaseSceneDataset):
                 if ((obj.obj_type in whitelist_types) or (whitelist_types == "all"))
                 and (obj.obj_type not in ignore_types)
             ],
-            source_identifier=f"{sensor}-{agent}"
+            source_identifier=f"{sensor}-{agent}",
         )
 
     def _load_objects_global(
