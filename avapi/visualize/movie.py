@@ -3,11 +3,11 @@ import ipywidgets as wg
 from IPython.display import display
 from tqdm import tqdm
 
-import avapi
+from avapi.visualize.snapshot import show_image_with_boxes, show_boxes_bev
 
 
 def make_movie_from_DM(
-    DM, dataset_name, CAM="main_camera", save=False, show_in_notebook=True
+    DM, dataset_name, boxes=[], CAM="main_camera", save=False, show_in_notebook=True
 ):
     if DM.frames is None:
         print("NO FRAMES IN SCENE")
@@ -24,7 +24,10 @@ def make_movie_from_DM(
     boxes = []
     for frame_idx in range(i_start, i_end, 1):
         frame = DM.get_frames(sensor=CAM)[frame_idx]
-        img_boxes = DM.get_objects(frame, sensor=CAM)  # using ground truth
+        if len(boxes) == 0:
+            img_boxes = DM.get_objects(frame, sensor=CAM)  # using ground truth
+        else:
+            img_boxes = boxes[frame_idx]
         img = DM.get_image(frame, sensor=CAM)
 
         boxes.append(img_boxes)
@@ -41,23 +44,30 @@ def make_movie_from_DM(
 
 
 def make_movie(
-    raw_imgs, boxes, fps=10, name="untitled", save=False, show_in_notebook=True
+    raw_imgs, boxes, fps=10, name="untitled", projection="img", save=False, show_in_notebook=True
 ):
     from avapi.evaluation import ResultManager
 
     # process images (adding boxes to raw images)
     processed_imgs = []
-    print("Processing images and boxes")
-    for img, box in tqdm(zip(raw_imgs, boxes), total=len(boxes)):
-        if isinstance(box, ResultManager):
-            img_out = box.visualize(
-                image=img, projection="2d", show=False, return_image=True
-            )
-        else:
-            img_out = avapi.visualize.snapshot.show_image_with_boxes(
-                img, box, show=False, return_image=True
-            )
-        processed_imgs.append(img_out)
+    if projection == "img":
+        print("Processing images and boxes")
+        for img, box in tqdm(zip(raw_imgs, boxes), total=len(boxes)):
+            if isinstance(box, ResultManager):
+                img_out = box.visualize(
+                    image=img, projection="img", show=False, return_image=True
+                )
+            else:
+                img_out = show_image_with_boxes(
+                    img, box, show=False, return_image=True
+                )
+            processed_imgs.append(img_out)
+    elif projection == "bev":
+        for box in tqdm(boxes, total=len(boxes)):
+            img_out = show_boxes_bev(box, show=False, return_image=True)
+            processed_imgs.append(img_out)
+    else:
+        raise NotImplementedError(projection)
 
     print("done")
     height, width, layers = processed_imgs[0].shape
