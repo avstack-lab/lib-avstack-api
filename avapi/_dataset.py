@@ -151,8 +151,8 @@ class BaseSceneDataset:
         return self.get_ego(frame).as_reference()
 
     def get_sensor_data_filepath(self, frame, sensor, agent=None):
-        sensor = self.get_sensor_name(sensor, agent)
-        return self._load_sensor_data_filepath(frame, sensor)
+        sensor = self.get_sensor_name(sensor=sensor, agent=agent)
+        return self._load_sensor_data_filepath(frame, sensor=sensor, agent=agent)
 
     def get_image(self, frame, sensor=None, agent=None):
         sensor = self.get_sensor_name(sensor, agent=agent)
