@@ -1,9 +1,16 @@
+from functools import partial
+from multiprocessing import Pool
+
 import cv2
 import ipywidgets as wg
 from IPython.display import display
 from tqdm import tqdm
 
-from avapi.visualize.snapshot import show_boxes_bev, show_image_with_boxes
+from avapi.visualize.snapshot import (
+    show_boxes_bev,
+    show_image_with_boxes,
+    show_lidar_bev_with_boxes,
+)
 
 
 def make_movie_from_DM(
@@ -43,36 +50,68 @@ def make_movie_from_DM(
     )
 
 
+def _get_image_with_box(projection, extent, img, pc, boxes):
+    from avapi.evaluation import ResultManager
+
+    if projection == "img":
+        if isinstance(boxes, ResultManager):
+            img_out = boxes.visualize(
+                image=img, projection="img", show=False, return_image=True
+            )
+        else:
+            img_out = show_image_with_boxes(img, boxes, show=False, return_image=True)
+    elif projection == "bev":
+        if pc is None:
+            img_out = show_boxes_bev(
+                boxes, extent=extent, show=False, return_image=True
+            )
+        else:
+            img_out = show_lidar_bev_with_boxes(
+                pc, boxes, extent=extent, show=False, return_image=True
+            )
+    else:
+        raise NotImplementedError(projection)
+    return img_out
+
+
 def make_movie(
     raw_imgs,
-    boxes,
+    boxes=[],
+    raw_pcs=None,
     fps=10,
     name="untitled",
     projection="img",
     save=False,
     show_in_notebook=True,
+    extent=None,
+    with_multi=False,
+    nproc=5,
 ):
-    from avapi.evaluation import ResultManager
+    if len(boxes) == 0:
+        boxes = [[]] * len(raw_imgs)
+    if raw_pcs is None:
+        raw_pcs = [None] * len(boxes)
 
     # process images (adding boxes to raw images)
-    processed_imgs = []
-    if projection == "img":
-        print("Processing images and boxes")
-        for img, box in tqdm(zip(raw_imgs, boxes), total=len(boxes)):
-            if isinstance(box, ResultManager):
-                img_out = box.visualize(
-                    image=img, projection="img", show=False, return_image=True
+    if with_multi:
+        part_func = partial(_get_image_with_box, projection, extent)
+        with Pool(nproc) as p:
+            processed_imgs = list(
+                tqdm(
+                    p.istarmap(
+                        part_func,
+                        zip(raw_imgs, boxes),
+                    ),
+                    position=0,
+                    leave=True,
+                    total=len(boxes),
                 )
-            else:
-                img_out = show_image_with_boxes(img, box, show=False, return_image=True)
-            processed_imgs.append(img_out)
-    elif projection == "bev":
-        for box in tqdm(boxes, total=len(boxes)):
-            img_out = show_boxes_bev(box, show=False, return_image=True)
-            processed_imgs.append(img_out)
+            )
     else:
-        raise NotImplementedError(projection)
-
+        processed_imgs = [
+            _get_image_with_box(projection, extent, img=img, pc=pc, boxes=box)
+            for img, pc, box in tqdm(zip(raw_imgs, raw_pcs, boxes), total=len(boxes))
+        ]
     print("done")
     height, width, layers = processed_imgs[0].shape
     size = (width, height)
