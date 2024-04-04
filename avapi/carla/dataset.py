@@ -281,13 +281,9 @@ class CarlaSceneDataset(BaseSceneDataset):
         return None
 
     def _load_agents(self, frame):
-        DC = DataContainerDecoder
-        DC.data_decoder = ObjectStateDecoder
         timestamp = None
         filepath = self.get_object_file(frame, timestamp, is_agent=True, is_global=True)
-        with open(filepath, "r") as f:
-            agents = json.load(f, cls=DC)
-        return agents
+        return read_agents_from_file(filepath)
 
     def _load_sensor_data_filepath(self, frame, sensor, agent):
         return (
@@ -381,7 +377,7 @@ class CarlaSceneDataset(BaseSceneDataset):
             is_agent=False,
             is_global=False,
         )
-        objs = self._read_objects(filepath)
+        objs = read_objects_from_file(filepath)
         return DataContainer(
             frame=frame,
             timestamp=self.get_timestamp(frame=frame, sensor=sensor, agent=agent),
@@ -451,15 +447,24 @@ class CarlaSceneDataset(BaseSceneDataset):
             lines = f.readlines()
         return len(lines)
 
-    def _read_objects(self, filepath):
-        with open(filepath, "r") as f:
-            lines = f.readlines()
-        assert len(lines) == 1
-        DC = DataContainerDecoder
-        DC.data_decoder = ObjectStateDecoder
-        objs = json.loads(lines[0], cls=DC)
-        return np.asarray(objs.data)
-
     def _save_objects(self, frame, objects, folder, file):
         with open(os.path.join(folder, file.format("txt")), "w") as f:
             f.write(objects.encode())
+
+
+def read_agents_from_file(filepath):
+    DC = DataContainerDecoder
+    DC.data_decoder = ObjectStateDecoder
+    with open(filepath, "r") as f:
+        agents = json.load(f, cls=DC)
+    return agents
+
+
+def read_objects_from_file(filepath):
+    with open(filepath, "r") as f:
+        lines = f.readlines()
+    assert len(lines) == 1
+    DC = DataContainerDecoder
+    DC.data_decoder = ObjectStateDecoder
+    objs = json.loads(lines[0], cls=DC)
+    return np.asarray(objs.data)

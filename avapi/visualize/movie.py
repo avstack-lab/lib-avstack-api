@@ -3,7 +3,7 @@ import ipywidgets as wg
 from IPython.display import display
 from tqdm import tqdm
 
-from avapi.visualize.snapshot import show_image_with_boxes, show_boxes_bev
+from avapi.visualize.snapshot import show_boxes_bev, show_image_with_boxes
 
 
 def make_movie_from_DM(
@@ -44,7 +44,13 @@ def make_movie_from_DM(
 
 
 def make_movie(
-    raw_imgs, boxes, fps=10, name="untitled", projection="img", save=False, show_in_notebook=True
+    raw_imgs,
+    boxes,
+    fps=10,
+    name="untitled",
+    projection="img",
+    save=False,
+    show_in_notebook=True,
 ):
     from avapi.evaluation import ResultManager
 
@@ -58,9 +64,7 @@ def make_movie(
                     image=img, projection="img", show=False, return_image=True
                 )
             else:
-                img_out = show_image_with_boxes(
-                    img, box, show=False, return_image=True
-                )
+                img_out = show_image_with_boxes(img, box, show=False, return_image=True)
             processed_imgs.append(img_out)
     elif projection == "bev":
         for box in tqdm(boxes, total=len(boxes)):
