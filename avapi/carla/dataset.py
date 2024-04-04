@@ -274,6 +274,10 @@ class CarlaSceneDataset(BaseSceneDataset):
     def get_agents(self, frame: int):
         return self._load_agents(frame)
 
+    def get_agent(self, frame: int, agent: int):
+        agents = self.get_agents(frame)
+        return [ag for ag in agents if ag.ID == agent][0]
+
     def get_sensor_ID(self, sensor: str, agent: int):
         return f"{sensor}-{agent}"
 
@@ -338,17 +342,12 @@ class CarlaSceneDataset(BaseSceneDataset):
             + self.file_endings[agent][sensor]
         )
         assert os.path.exists(filepath), filepath
-        if filepath.endswith(".ply"):
-            pcd = o3d.io.read_point_cloud(filepath)
-            pcd = np.asarray(pcd.points)
-        else:
-            pcd = np.fromfile(filepath, dtype=np.float32).reshape(
-                (-1, self.CFG["num_lidar_features"])
-            )
-        if filter_front:
-            return pcd[pcd[:, 0] > 0, :]  # assumes z is forward....
-        else:
-            return pcd
+        pcd = read_pc_from_file(
+            filepath,
+            n_features=self.CFG["num_lidar_features"],
+            filter_front=filter_front,
+        )
+        return pcd
 
     def _load_radar(self, frame, sensor, agent):
         timestamp = None
@@ -468,3 +467,15 @@ def read_objects_from_file(filepath):
     DC.data_decoder = ObjectStateDecoder
     objs = json.loads(lines[0], cls=DC)
     return np.asarray(objs.data)
+
+
+def read_pc_from_file(filepath, n_features: int, filter_front: bool):
+    if filepath.endswith(".ply"):
+        pcd = o3d.io.read_point_cloud(filepath)
+        pcd = np.asarray(pcd.points)
+    else:
+        pcd = np.fromfile(filepath, dtype=np.float32).reshape((-1, n_features))
+    if filter_front:
+        return pcd[pcd[:, 0] > 0, :]  # assumes z is forward....
+    else:
+        return pcd

@@ -478,7 +478,8 @@ class BaseSceneDataset:
             return obj
         else:  # data[0] == "kitti":  # assume kitti with no prefix -- this is for kitti static dataset
             ts = 0.0
-            ID = np.random.randint(low=0, high=1e6)  # not ideal but ensures unique IDs
+            # not ideal but ensures unique IDs
+            ID = np.random.randint(low=0, high=1e6)
             obj_type = data[0]
             occ = Occlusion.UNKNOWN
             box2d = data[4:8]
