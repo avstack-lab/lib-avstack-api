@@ -479,3 +479,9 @@ def read_pc_from_file(filepath, n_features: int, filter_front: bool):
         return pcd[pcd[:, 0] > 0, :]  # assumes z is forward....
     else:
         return pcd
+
+
+def read_calibration_from_file(filepath):
+    with open(filepath, "r") as f:
+        calib = json.load(f, cls=calibration.CalibrationDecoder)
+    return calib
