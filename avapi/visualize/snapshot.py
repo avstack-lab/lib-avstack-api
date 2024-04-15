@@ -323,8 +323,6 @@ def show_image_with_boxes(
                 corners_3d_in_image = box.project_corners_to_2d_image_plane(
                     img.calibration
                 )
-                print(box.position.x)
-                print(corners_3d_in_image)
                 img1 = draw_projected_box3d(
                     img1, corners_3d_in_image, color=col, ID=ID, fontscale=fontscale
                 )
