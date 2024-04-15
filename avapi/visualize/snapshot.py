@@ -195,20 +195,24 @@ def show_lidar_on_image(
         img.calibration
     )
 
+    # get colors for lidar pcs
+    if colormethod == "depth":
+        depths = pc_proj_img.depth
+        pt_colors = get_lidar_color(depths, mode="depth")
+    elif "channel" in colormethod:
+        channel = int(colormethod.split("-")[-1])
+        pt_colors = get_lidar_color(pc_proj_img.data[:, channel - 2], mode="randint")
+    else:
+        raise NotImplementedError
+
+    # add each point to image
     for i in range(len(pc_proj_img)):
-        if colormethod == "depth":
-            depth = pc_proj_img.depth[i]
-            color = get_lidar_color(depth, mode="depth")
-        elif "channel" in colormethod:
-            channel = int(colormethod.split("-")[-1])
-            color = get_lidar_color(pc_proj_img.data[i, channel - 2], mode="randint")
-        else:
-            raise NotImplementedError
         cv2.circle(
             img1,
-            (int(np.round(pc_proj_img[i, 0])), int(np.round(pc_proj_img[i, 1]))),
+            # (int(np.round(pc_proj_img[i, 0])), int(np.round(pc_proj_img[i, 1]))),
+            (int(pc_proj_img[i, 0]), int(pc_proj_img[i, 1])),
             2,
-            color=tuple(color),
+            color=tuple(pt_colors[i]),
             thickness=-1,
         )
     if boxes is None:
@@ -319,6 +323,8 @@ def show_image_with_boxes(
                 corners_3d_in_image = box.project_corners_to_2d_image_plane(
                     img.calibration
                 )
+                print(box.position.x)
+                print(corners_3d_in_image)
                 img1 = draw_projected_box3d(
                     img1, corners_3d_in_image, color=col, ID=ID, fontscale=fontscale
                 )
@@ -502,24 +508,24 @@ def show_lidar_bev_with_boxes(
     sc_arr = np.array([range_scale, width_scale])
     pc_bev = (pc2[:, [0, 1]] - min_arr) / sc_arr
 
-    # Colormap
-    depth = np.linalg.norm(pc2[:, [0, 1]], axis=1)
+    # get colors for lidar pcs
+    if colormethod == "depth":
+        depths = np.linalg.norm(pc2[:, [0, 1]], axis=1)
+        pt_colors = get_lidar_color(depths, mode="depth")
+    elif colormethod == "confidence":
+        pt_colors = get_lidar_color(pc2[:, 4], mode="confidence")
+    else:
+        raise NotImplementedError
 
     # Make image by adding circles
     for i in range(pc_bev.shape[0]):
-        if colormethod == "depth":
-            color = get_lidar_color(depth[i], mode="depth")
-        elif colormethod == "confidence":
-            color = get_lidar_color(pc2[i, 4], mode="confidence")
-        else:
-            raise NotImplementedError
-
         # Place in coordinates
         cv2.circle(
             img1,
-            (int(np.round(pc_bev[i, 0])), int(np.round(pc_bev[i, 1]))),
+            # (int(np.round(pc_bev[i, 0])), int(np.round(pc_bev[i, 1]))),
+            (int(pc_bev[i, 0]), int(pc_bev[i, 1])),
             2,
-            color=tuple(color),
+            color=tuple(pt_colors[i]),
             thickness=-1,
         )
 

@@ -11,16 +11,15 @@ def get_lidar_color(value, mode="depth"):
     # Min range = 0 --> 1
     # Max range = 100 --> 255
     if mode == "depth":
-        scaling = 100
+        scaling = 255 / 100
     elif mode == "confidence":
-        scaling = 2
+        scaling = 255 / 2
     elif mode == "randint":
-        scaling = 50
+        scaling = 255 / 50
     else:
         raise NotImplementedError(mode)
-
-    idx = max(1, min(255, 255 * value / scaling))
-    color = lidar_cmap[int(idx), :]
+    idx = np.maximum(1, np.minimum(255, scaling * value))
+    color = lidar_cmap[idx.astype(int), :]
     return color
 
 
