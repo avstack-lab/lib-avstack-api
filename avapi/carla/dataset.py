@@ -402,7 +402,7 @@ class CarlaSceneDataset(BaseSceneDataset):
         filepath = self.get_object_file(
             frame, timestamp, is_agent=False, is_global=True
         )
-        objs = self._read_objects(filepath)
+        objs = read_objects_from_file(filepath)
         objs = list(objs) if objs.size > 0 else []
 
         # load the ego objects as well
