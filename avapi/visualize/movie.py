@@ -102,6 +102,7 @@ def make_movie(
     extent=None,
     with_multi=False,
     nproc=5,
+    suffix="scene_movie.mp4",
     *args,
     **kwargs,
 ):
@@ -137,7 +138,10 @@ def make_movie(
     size = (width, height)
     # generate movie
     if save:
-        movie_name = name + "_scene_movie.mp4"
+        if suffix:
+            movie_name = name + "_" + suffix
+        else:
+            movie_name = name
 
         video = cv2.VideoWriter(movie_name, cv2.VideoWriter_fourcc(*"DIVX"), fps, size)
         print("Saving movie")
