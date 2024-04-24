@@ -16,6 +16,8 @@ def get_lidar_color(value, mode="depth"):
         scaling = 255 / 2
     elif mode == "randint":
         scaling = 255 / 50
+    elif mode == "channel":
+        scaling = 255 / 100
     else:
         raise NotImplementedError(mode)
     idx = np.maximum(1, np.minimum(255, scaling * value))

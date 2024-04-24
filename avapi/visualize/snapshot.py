@@ -200,8 +200,11 @@ def show_lidar_on_image(
         depths = pc_proj_img.depth
         pt_colors = get_lidar_color(depths, mode="depth")
     elif "channel" in colormethod:
-        channel = int(colormethod.split("-")[-1])
-        pt_colors = get_lidar_color(pc_proj_img.data[:, channel - 2], mode="randint")
+        raise NotImplementedError
+        # channel = int(colormethod.replace('channel', ''))
+        # pt_colors = get_lidar_color(pc2[:, channel], mode="channel")
+        # channel = int(colormethod.split("-")[-1])
+        # pt_colors = get_lidar_color(pc_proj_img.data[:, channel - 2], mode="randint")
     else:
         raise NotImplementedError
 
@@ -412,6 +415,7 @@ def show_lidar_bev_with_boxes(
     line_colors=None,
     bev_size=[500, 500],
     colormethod="depth",
+    rescale=True,
     show=True,
     return_image=False,
 ):
@@ -449,16 +453,21 @@ def show_lidar_bev_with_boxes(
         pc2 = pc.data
 
     # Get maxes and mins
-    if pc2.shape[0] > 0:
-        min_range = min(0, np.min(pc2[:, 0]))
-        max_range = max(min_range + 10.0, np.max(pc2[:, 0]))
-        min_width = np.min(pc2[:, 1])
-        max_width = max(min_width + 2.0, np.max(pc2[:, 1]))
+    if rescale:
+        if pc2.shape[0] > 0:
+            min_range = min(0, np.min(pc2[:, 0]))
+            max_range = max(min_range + 10.0, np.max(pc2[:, 0]))
+            min_width = np.min(pc2[:, 1])
+            max_width = max(min_width + 2.0, np.max(pc2[:, 1]))
+        else:
+            min_range = 0
+            max_range = 0
+            min_width = 0
+            max_width = 0
     else:
-        min_range = 0
-        max_range = 0
-        min_width = 0
-        max_width = 0
+        assert extent is not None
+        min_range, max_range = extent[0]
+        min_width, max_width = extent[1]
 
     boxes_show = []
     boxes_show_corners = []
@@ -512,6 +521,9 @@ def show_lidar_bev_with_boxes(
         pt_colors = get_lidar_color(depths, mode="depth")
     elif colormethod == "confidence":
         pt_colors = get_lidar_color(pc2[:, 4], mode="confidence")
+    elif "channel" in colormethod:
+        channel = int(colormethod.split("-")[1])
+        pt_colors = get_lidar_color(pc2[:, channel], mode="channel")
     else:
         raise NotImplementedError
 

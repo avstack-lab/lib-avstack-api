@@ -14,7 +14,14 @@ from avapi.visualize.snapshot import (
 
 
 def make_movie_from_DM(
-    DM, dataset_name, boxes=[], CAM="main_camera", save=False, show_in_notebook=True
+    DM,
+    dataset_name,
+    boxes=[],
+    CAM="main_camera",
+    save=False,
+    show_in_notebook=True,
+    *args,
+    **kwargs,
 ):
     if DM.frames is None:
         print("NO FRAMES IN SCENE")
@@ -47,27 +54,36 @@ def make_movie_from_DM(
         name=dataset_name,
         save=save,
         show_in_notebook=show_in_notebook,
+        *args,
+        **kwargs,
     )
 
 
-def _get_image_with_box(projection, extent, img, pc, boxes):
+def _get_image_with_box(projection, extent, img, pc, boxes, *args, **kwargs):
     from avapi.evaluation import ResultManager
 
     if projection == "img":
         if isinstance(boxes, ResultManager):
             img_out = boxes.visualize(
-                image=img, projection="img", show=False, return_image=True
+                image=img,
+                projection="img",
+                show=False,
+                return_image=True,
+                *args,
+                **kwargs,
             )
         else:
-            img_out = show_image_with_boxes(img, boxes, show=False, return_image=True)
+            img_out = show_image_with_boxes(
+                img, boxes, show=False, return_image=True, *args, **kwargs
+            )
     elif projection == "bev":
         if pc is None:
             img_out = show_boxes_bev(
-                boxes, extent=extent, show=False, return_image=True
+                boxes, extent=extent, show=False, return_image=True, *args, **kwargs
             )
         else:
             img_out = show_lidar_bev_with_boxes(
-                pc, boxes, extent=extent, show=False, return_image=True
+                pc, boxes, extent=extent, show=False, return_image=True, *args, **kwargs
             )
     else:
         raise NotImplementedError(projection)
@@ -86,6 +102,8 @@ def make_movie(
     extent=None,
     with_multi=False,
     nproc=5,
+    *args,
+    **kwargs,
 ):
     if len(boxes) == 0:
         boxes = [[]] * len(raw_imgs)
@@ -109,7 +127,9 @@ def make_movie(
             )
     else:
         processed_imgs = [
-            _get_image_with_box(projection, extent, img=img, pc=pc, boxes=box)
+            _get_image_with_box(
+                projection, extent, img=img, pc=pc, boxes=box, *args, **kwargs
+            )
             for img, pc, box in tqdm(zip(raw_imgs, raw_pcs, boxes), total=len(boxes))
         ]
     print("done")
