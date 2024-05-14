@@ -12,13 +12,12 @@ except ModuleNotFoundError as e:
     print("Cannot find ipywidgets...cannot run visualizations")
 
 from avstack.environment.objects import VehicleState
-from avstack.geometry import bbox
+from avstack.geometry import Attitude, GlobalOrigin3D, Position, bbox
 from avstack.modules.perception.detections import BoxDetection
 
+from avapi.utils import color_from_object_type
+
 from .snapshot import show_image_with_boxes
-
-
-# from avapi.evaluation import ResultManager, color_from_object_type
 
 
 # ========================================================
@@ -91,6 +90,8 @@ def load_ground_truth_data(folder):
 
 
 def replay_ground_truth_from_folder(folder, viz_type="track"):
+    from avapi.evaluation import ResultManager
+
     assert viz_type in ["track", "track_percep"]
     print("Replaying ground truth data from {}".format(folder))
     ego_data, npc_data = load_ground_truth_data(folder)
@@ -120,6 +121,8 @@ def replay_ground_truth_from_folder(folder, viz_type="track"):
 
 
 def replay_ground_truth_from_data_manager(DM, sensor="main_camera"):
+    from avapi.evaluation import ResultManager
+
     ego_data = [DM.get_ego(frame) for frame in DM.frames]
     npc_data = [DM.get_objects(frame) for frame in DM.frames]
 
@@ -197,7 +200,7 @@ def replay_track_results(
             add_points_real.append([])
             for pt in pts:
                 if (pt is not None) and (not isinstance(pt, str)):
-                    pt.change_origin(NominalOriginStandard)
+                    pt.change_reference(GlobalOrigin3D, inplace=True)
                     add_points_real[i].append(pt)
         add_points = add_points_real
     if (highlight_track_IDs is None) or (len(highlight_track_IDs) == 0):
@@ -206,7 +209,7 @@ def replay_track_results(
         assert len(highlight_track_IDs) == len(track_results), len(highlight_track_IDs)
 
     if ego_box is not None:
-        ego_box.change_origin(NominalOriginStandard)
+        ego_box.change_reference(GlobalOrigin3D, inplace=True)
 
     # Get all track locations and predictions ahead of time
     trk_points = {}  # ID: frame: pt
@@ -216,7 +219,7 @@ def replay_track_results(
     for idx, tr in track_results.items():
         for track in tr["result"].tracks:
             if isinstance(track, VehicleState):
-                track.change_origin(NominalOriginStandard)
+                track.change_reference(GlobalOrigin3D, inplace=True)
                 if track.ID not in trk_points:
                     trk_points[track.ID] = {}
                     trk_preds[track.ID] = {}
@@ -229,7 +232,7 @@ def replay_track_results(
                     raise NotImplementedError(type(track))
         for truth in tr["result"].truths:
             if isinstance(truth, VehicleState):
-                truth.change_origin(NominalOriginStandard)
+                truth.change_reference(GlobalOrigin3D, inplace=True)
 
     def f(idx):
         axs_slider.clear()
@@ -255,14 +258,9 @@ def replay_track_results(
                         if do_highlight:
                             fac = 1.2
                             box_enlarged = bbox.Box3D(
-                                [
-                                    fac * track.box.h,
-                                    fac * track.box.w,
-                                    fac * track.box.l,
-                                    track.position,
-                                    track.box.attitude,
-                                ],
-                                track.position.origin,
+                                position=track.position,
+                                attitude=track.attitude,
+                                hwl=[fac * d for d in track.box.size],
                             )
                             axs_slider.add_patch(
                                 _box_to_bev_rect(
@@ -361,7 +359,7 @@ def replay_track_results(
             ):
                 col = tuple(c / 255.0 for c in color)
                 if "bev" in projection:
-                    truth.box3d.change_origin(NominalOriginStandard)
+                    truth.box3d.change_reference(GlobalOrigin3D, inplace=True)
                     rect = _box_to_bev_rect(
                         truth.box3d,
                         col,
@@ -376,7 +374,9 @@ def replay_track_results(
 
         # add fake elements to legend
         nominal_box = bbox.Box3D(
-            [2, 2, 4, np.zeros((3,)), np.quaternion(1)], NominalOriginStandard
+            position=Position(np.zeros((3,)), GlobalOrigin3D),
+            attitude=Attitude(np.quaternion(1), GlobalOrigin3D),
+            hwl=[2, 2, 4],
         )
         # -- unsafe
         handles.append(
@@ -535,12 +535,12 @@ def replay_track_percep_results(
             track_boxes = []
             for trk in track_results[idx]["result"].tracks:
                 trk_copy = deepcopy(trk).as_object()
-                trk_copy.change_origin(calib.origin)
+                trk_copy.change_reference(calib.reference, inplace=True)
                 track_boxes.append(trk_copy)
             box_colors = track_results[idx]["result"].colors["detections"]
             if show_truth:
                 for truth in track_results[idx]["result"].truths:
-                    truth.box.change_origin(calib.origin)
+                    truth.box.change_reference(calib.reference, inplace=True)
                     track_boxes.append(truth)
                 box_colors.extend(track_results[idx]["result"].colors["truths"])
         else:
@@ -553,7 +553,10 @@ def replay_track_percep_results(
         if "fv" in projection:
             img = DM.get_image(idx, sensor=sensor)
             img3d = show_image_with_boxes(
-                img, track_boxes, box_colors=box_colors, show=False, return_images=True
+                img,
+                track_boxes,
+                box_colors=box_colors,
+                show=False,
             )
             imgs_ALL["fv"] = (
                 img3d[..., None]
@@ -612,7 +615,7 @@ def _box_to_bev_rect(
         (left, bottom),
         width,
         height,
-        angle,
+        angle=angle,
         alpha=0.9,
         edgecolor=color,
         facecolor=facecolor,

@@ -1,9 +1,3 @@
-# @Author: Spencer Hallyburton <spencer>
-# @Date:   2022-04-18
-# @Filename: base.py
-# @Last modified by:   spencer
-# @Last modified time: 2022-04-18
-
 import glob
 import os
 from copy import deepcopy
@@ -19,7 +13,7 @@ from avstack.modules.assignment import (
 )
 from tqdm import tqdm
 
-from avapi.utils import color_from_object_type, get_indices_in_folder
+from avapi.utils import color_from_object_type, get_indices_filenames_in_folder
 
 from ..visualize import snapshot
 from .metrics import precision, recall
@@ -71,7 +65,8 @@ class ResultAnalyzer:
             raise RuntimeError(f"No results to be found in {self.result_path}")
 
         # Get indices by looping
-        self.idxs_available = get_indices_in_folder(glob_dir, self.idxs)
+        # self.idxs_available = get_indices_in_folder(glob_dir, self.idxs)
+        idxs, filenames = get_indices_filenames_in_folder(glob_dir, self.idxs)
 
         # -- run per-frame analysis
         part_func = partial(
@@ -89,15 +84,15 @@ class ResultAnalyzer:
             with Pool(8) as p:
                 res_frame = list(
                     tqdm(
-                        p.imap(part_func, self.idxs_available),
-                        total=len(self.idxs_available),
+                        p.imap(part_func, zip(idxs, filenames)),
+                        total=len(filenames),
                     )
                 )
         else:
-            for idx in tqdm(self.idxs_available):
-                res_frame.append(part_func(idx))
+            for idx, filename in tqdm(zip(idxs, filenames), total=len(filenames)):
+                res_frame.append(part_func((idx, filename)))
 
-        res_frame = {idx: res for idx, res in zip(self.idxs_available, res_frame)}
+        res_frame = {idx: res for idx, res in zip(idxs, res_frame)}
 
         # -- run per-sequence analysis
         res_seq = self._run_per_seq_analysis(res_frame)
@@ -241,9 +236,9 @@ class ResultManager:
             if c in idx_tru_dontcare
         ]
         assigns = {
-            r: c
+            r: c[0]
             for r, c in assignment.iterate_over("rows").items()
-            if list(c.keys())[0] not in idx_tru_dontcare
+            if c[0] not in idx_tru_dontcare
         }
         assignment = OneEdgeBipartiteGraph(
             assigns,
@@ -267,8 +262,7 @@ class ResultManager:
             )
             n_fn = len([idx for idx in idx_FN if self.truths[idx].obj_type == obj_type])
             n_tp = 0
-            for r, cw in assigns.items():
-                c = list(cw.keys())[0]
+            for r, c in assigns.items():
                 if self.detections[r].obj_type == obj_type:
                     if self.truths[c].obj_type == obj_type:
                         n_tp += 1

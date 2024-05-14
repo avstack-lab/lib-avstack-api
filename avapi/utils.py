@@ -29,6 +29,33 @@ def remove_glob(glob_files):
         print("Removed files from: {}".format(os.path.dirname(f)), flush=True)
 
 
+def get_indices_filenames_in_folder(glob_dir, idxs=None):
+    idxs_available = []
+    fnames_available = []
+    for f in glob_dir:
+        if "log" in f:
+            continue
+        try:
+            idx = int(f.split("/")[-1].replace(".txt", ""))
+        except ValueError:
+            idx = int(f.split("/")[-1].split("-")[2])
+        if idxs is not None:
+            try:
+                iterator = iter(idxs)
+            except TypeError:
+                # not iterable
+                if not (idx == idxs):
+                    continue
+            else:
+                # iterable
+                if idx not in idxs:
+                    continue
+        if idx not in idxs_available:
+            idxs_available.append(idx)
+            fnames_available.append(f)
+    return idxs_available, fnames_available
+
+
 def get_indices_in_folder(glob_dir, idxs=None):
     """Get indices of items in a glob_dir
     optionally: enforce that they are in the list idxs
@@ -37,7 +64,10 @@ def get_indices_in_folder(glob_dir, idxs=None):
     for f in glob_dir:
         if "log" in f:
             continue
-        idx = int(f.split("/")[-1].replace(".txt", ""))
+        try:
+            idx = int(f.split("/")[-1].replace(".txt", ""))
+        except ValueError:
+            idx = int(f.split("/")[-1].split("-")[2])
         if idxs is not None:
             try:
                 iterator = iter(idxs)

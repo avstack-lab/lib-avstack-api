@@ -1,15 +1,12 @@
-# -*- coding: utf-8 -*-
-# @Author: spencer@primus
-# @Date:   2022-06-28
-# @Last Modified by:   spencer@primus
-# @Last Modified time: 2022-09-09
-
 import json
 import os
 
 import numpy as np
 from avstack.geometry import bbox
-from avstack.modules.perception.detections import BoxDetection, DetectionDecoder
+from avstack.modules.perception.detections import (
+    BoxDetection,
+    DetectionContainerDecoder,
+)
 
 from avapi.evaluation.base import ResultAnalyzer, ResultManager
 
@@ -63,11 +60,12 @@ class PercepResultsAnalyzer(ResultAnalyzer):
         max_dist,
         max_occ,
         whitelist_types,
-        idx,
+        idx_filename,
     ):
         """Load percep status of a single frame"""
+        idx, filename = idx_filename
+
         # Get truths
-        # import ipdb; ipdb.set_trace()
         dist_all = max_dist if sensor_eval_super == "ego" else None
         truths_all = DM.get_objects(
             idx, sensor=sensor_eval_super, max_dist=dist_all, whitelist_types="all"
@@ -85,9 +83,8 @@ class PercepResultsAnalyzer(ResultAnalyzer):
         )
 
         # Get detections
-        det_file_path = os.path.join(result_path, "%06i.txt" % idx)
-        with open(det_file_path, "rb") as f:
-            detections = json.load(f, cls=DetectionDecoder)
+        with open(filename, "rb") as f:
+            detections = json.load(f, cls=DetectionContainerDecoder)
         dets = [det for det in detections if isinstance(det, (BoxDetection,))]
         metric = (
             "3D_IoU"

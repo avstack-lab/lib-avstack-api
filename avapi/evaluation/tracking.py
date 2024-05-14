@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-# @Author: spencer@primus
-# @Date:   2022-05-30
-# @Last Modified by:   spencer@primus
-# @Last Modified time: 2022-09-09
-
 import glob
 import logging
 import os
@@ -70,9 +64,11 @@ class TrackResultsAnalyzer(ResultAnalyzer):
         max_dist,
         max_occ,
         whitelist_types,
-        idx,
+        idx_filename,
     ):
         """Load track status of a single frame"""
+        idx, filename = idx_filename
+
         # Get truths
         dist_all = max_dist if sensor_eval_super == "ego" else None
         truths_all = DM.get_objects(
@@ -91,10 +87,8 @@ class TrackResultsAnalyzer(ResultAnalyzer):
         )
 
         # Get tracks
-        trk_file_path = os.path.join(result_path, "%06i.txt" % idx)
-        tracks = DM.get_objects_from_file(
-            trk_file_path, whitelist_types=whitelist_types
-        )
+        # trk_file_path = os.path.join(result_path, "%06i.txt" % idx)
+        tracks = DM.get_objects_from_file(filename, whitelist_types=whitelist_types)
 
         # -- 2d analysis
 
@@ -142,6 +136,7 @@ class TrackResultsAnalyzer(ResultAnalyzer):
         DM, save_folder, sensor_eval, sensor_eval_super, whitelist_types, max_dist
     ):
         """Run HOTA metrics"""
+        return {}
         tracker_name = "no-name"
 
         # --- metrics evaluator
