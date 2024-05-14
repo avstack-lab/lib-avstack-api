@@ -169,7 +169,12 @@ class nuScenesSceneDataset(_nuBaseDataset):
         self.t0 = self.sample_records[0]["timestamp"] / 1e6
 
     def _load_lidar(
-        self, frame, sensor="LIDAR_TOP", filter_front=False, with_panoptic=False
+        self,
+        frame,
+        sensor="LIDAR_TOP",
+        filter_front=False,
+        with_panoptic=False,
+        **kwargs,
     ):
         if sensor.lower() == "lidar":
             sensor = self.sensors["lidar"]
@@ -187,7 +192,7 @@ class nuScenesSceneDataset(_nuBaseDataset):
         else:
             return lidar
 
-    def _load_radar(self, frame, sensor="RADAR_FRONT"):
+    def _load_radar(self, frame, sensor="RADAR_FRONT", **kwargs):
         """ "
         Important: when trying to incorporate the velocity component of
         the radar data, make sure to look at the nuScenes forums for

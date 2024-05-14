@@ -34,6 +34,15 @@ def wrap_minus_pi_to_pi(phases):
     return phases
 
 
+def get_reference_from_line(line):
+    """A bit of a hack"""
+    line = line.split()
+    assert line[0] == "origin", line[0]
+    x = np.array([float(l) for l in line[1:4]])
+    q = np.quaternion(*[float(l) for l in line[4:8]])
+    return ReferenceFrame(x=x, q=q, reference=GlobalOrigin3D)
+
+
 class BaseSceneManager:
     def __iter__(self):
         for scene in self.scenes:
@@ -135,7 +144,7 @@ class BaseSceneDataset:
 
     def get_frames(self, sensor, agent=None):
         sensor = self.get_sensor_name(sensor, agent=agent)
-        return self._load_frames(sensor, agent=agent)
+        return self._load_frames(sensor=sensor, agent=agent)
 
     def get_calibration(self, frame, sensor, agent=None):
         sensor = self.get_sensor_name(sensor, agent)
@@ -414,7 +423,7 @@ class BaseSceneDataset:
     def parse_label_line(self, label_file_line):
         # Parse data elements
         data = label_file_line.strip("\n").split(" ")
-        if data[0] in ["avstack", "nuscenes"]:
+        if data[0] == "nuscenes":
             idx = 2
             ts = data[idx]
             idx += 1
@@ -669,10 +678,10 @@ class _nuBaseDataset(BaseSceneDataset):
             ],
         )
 
-    def _load_frames(self, sensor: str = None):
+    def _load_frames(self, **kwargs):
         return self.frames
 
-    def _load_calibration(self, frame, ego_reference, sensor=None):
+    def _load_calibration(self, frame, ego_reference, sensor=None, **kwargs):
         """
         W := global "world" frame
         E := ego frame
@@ -699,18 +708,20 @@ class _nuBaseDataset(BaseSceneDataset):
             calib = calibration.Calibration(reference)
         return calib
 
-    def _load_timestamp(self, frame, sensor, utime=False):
+    def _load_timestamp(self, frame, sensor, utime=False, **kwargs):
+        if sensor is None:
+            sensor = "LIDAR_TOP"
         ut = self._get_sensor_record(frame, sensor)["timestamp"]
         if utime:
             return ut
         else:
             return ut / 1e6 - self.t0
 
-    def _load_image(self, frame, sensor=None):
+    def _load_image(self, frame, sensor=None, **kwargs):
         img_fname = self._get_sensor_file_name(frame, sensor)
         return imread(img_fname)
 
-    def _load_ego(self, frame):
+    def _load_ego(self, frame, **kwargs):
         ref = GlobalOrigin3D
         if self.vehicle_pose is not None:
             try:
@@ -769,6 +780,7 @@ class _nuBaseDataset(BaseSceneDataset):
         sensor=None,
         whitelist_types=["car", "pedestrian", "bicycle", "truck", "bus", "motorcycle"],
         ignore_types=[],
+        **kwargs,
     ):
         """
         automatically loads into local sensor coordinates

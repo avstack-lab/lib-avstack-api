@@ -1,13 +1,3 @@
-# -*- coding: utf-8 -*-
-# @Author: Spencer H
-# @Date:   2022-04-03
-# @Last Modified by:   Spencer H
-# @Last Modified date: 2022-08-11
-# @Description:
-"""
-
-"""
-
 import os
 
 

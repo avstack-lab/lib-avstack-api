@@ -1,12 +1,3 @@
-# -*- coding: utf-8 -*-
-# @Author: Spencer H
-# @Date:   2022-08-08
-# @Last Modified by:   Spencer H
-# @Last Modified date: 2022-09-29
-# @Description:
-"""
-
-"""
 import glob
 import os
 import re
@@ -156,10 +147,10 @@ class KittiObjectDataset(BaseSceneDataset):
         """Wrapper to the classmethod using the split path"""
         return self._get_frames_folder(self.split_path)
 
-    def _load_frames(self, sensor: str):
+    def _load_frames(self, **kwargs):
         return self.frames
 
-    def _load_ego(self, frame):
+    def _load_ego(self, frame: int, **kwargs):
         """Ego origin is defined as the center of the vehicle"""
         reference = self._load_ego_reference(frame)
         ego = VehicleState("car")
@@ -215,7 +206,7 @@ class KittiObjectDataset(BaseSceneDataset):
     def _load_ego_reference(self, frame):
         return GlobalOrigin3D  # TODO: this is not ideal...
 
-    def _load_calibration(self, frame, sensor, ego_reference):
+    def _load_calibration(self, frame: int, sensor: str, ego_reference, **kwargs):
         calib_fname = os.path.join(
             self.split_path, self.folder_names["calibration"], "%06d.txt" % frame
         )
@@ -277,7 +268,7 @@ class KittiObjectDataset(BaseSceneDataset):
             raise NotImplementedError(sensor)
         return calib
 
-    def _load_image(self, frame, sensor):
+    def _load_image(self, frame: int, sensor: str, **kwargs):
         if isinstance(sensor, str) and "image" in sensor:
             img_fname = os.path.join(
                 self.split_path, self.folder_names[sensor], "%06d.png" % frame
@@ -290,8 +281,7 @@ class KittiObjectDataset(BaseSceneDataset):
             )
         return imread(img_fname)
 
-    def _load_lidar(self, frame, sensor, **kwargs):
-        filter_front = True  # always filter KITTI to front-only
+    def _load_lidar(self, frame: int, filter_front=True, **kwargs):
         lidar_fname = os.path.join(
             self.split_path, self.folder_names["lidar"], "%06d.bin" % frame
         )
@@ -309,6 +299,7 @@ class KittiObjectDataset(BaseSceneDataset):
         sensor="image-2",
         whitelist_types=["Car", "Pedestrian", "Cyclist"],
         ignore_types=["DontCare"],
+        **kwargs,
     ):
         label_fname = os.path.join(
             self.split_path, self.folder_names["label"], "%06d.txt" % frame
@@ -321,7 +312,7 @@ class KittiObjectDataset(BaseSceneDataset):
             obj.change_reference(object_calib.reference, inplace=True)
         return objects
 
-    def _load_timestamp(self, frame, utime=False, sensor="lidar"):
+    def _load_timestamp(self, frame: int, sensor: str = "lidar", **kwargs):
         if os.path.exists(
             os.path.join(self.split_path, self.folder_names["timestamps"])
         ):
@@ -349,7 +340,7 @@ class KittiObjectDataset(BaseSceneDataset):
             for line in str_list:
                 f.write(f"{line}\n")
 
-    def _get_sensor_file_name(self, frame, sensor: str):
+    def _get_sensor_file_name(self, frame: int, sensor: str):
         return os.path.join(
             self.split_path,
             self.folder_names[sensor],

@@ -35,7 +35,7 @@ def make_movie_from_DM(
         i_end = len(DM.frames)
 
     imgs = []
-    boxes = []
+    boxes_out = []
     for frame_idx in range(i_start, i_end, 1):
         frame = DM.get_frames(sensor=CAM)[frame_idx]
         if len(boxes) == 0:
@@ -44,12 +44,12 @@ def make_movie_from_DM(
             img_boxes = boxes[frame_idx]
         img = DM.get_image(frame, sensor=CAM)
 
-        boxes.append(img_boxes)
+        boxes_out.append(img_boxes)
         imgs.append(img)
 
     make_movie(
         imgs,
-        boxes,
+        boxes_out,
         fps=DM.framerate,
         name=dataset_name,
         save=save,
