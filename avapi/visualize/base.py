@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-lidar_cmap = plt.cm.get_cmap("hsv", 256)
+lidar_cmap = plt.get_cmap("hsv", 256)
 lidar_cmap = np.array([lidar_cmap(i) for i in range(256)])[:, :3] * 255
 
 
