@@ -5,6 +5,7 @@ from typing import Tuple, Union
 
 import numpy as np
 from avstack import calibration
+from avstack.config import DATASETS
 from avstack.datastructs import DataContainer, DataContainerDecoder
 from avstack.environment import ObjectStateDecoder
 from avstack.geometry import GlobalOrigin3D, ReferenceFrame
@@ -61,6 +62,7 @@ _nominal_whitelist_types = ["car", "bicycle", "truck", "motorcycle"]
 _nominal_ignore_types = []
 
 
+@DATASETS.register_module()
 class CarlaScenesManager(BaseSceneManager):
     name = "CARLA"
     nominal_whitelist_types = _nominal_whitelist_types
@@ -239,17 +241,21 @@ class CarlaSceneDataset(BaseSceneDataset):
                 file_post = self.agent_files["frame"][frame]
             else:
                 file_post = self.npc_files["frame"][frame]
-                if sensor:
+                if not is_global:
                     file_post = file_post.replace("npcs", "objects")
         else:
             raise
         if is_global:
             filepath = os.path.join(self.obj_folder, file_post)
         else:
-            assert sensor is not None
-            filepath = os.path.join(
-                self.obj_local_folder, f"{sensor}-{agent}", file_post
-            )
+            if sensor is None:
+                filepath = os.path.join(
+                    self.obj_local_folder, f"agent-{agent}", file_post
+                )
+            else:
+                filepath = os.path.join(
+                    self.obj_local_folder, f"{sensor}-{agent}", file_post
+                )
         return filepath
 
     def get_sensor_file(self, frame, timestamp, sensor, agent, file_type):
@@ -278,6 +284,10 @@ class CarlaSceneDataset(BaseSceneDataset):
         agents = self.get_agents(frame)
         return [ag for ag in agents if ag.ID == agent][0]
 
+    def _load_agent_set(self, frame: int) -> set:
+        # TODO: this is slow...improve
+        return {ag.ID for ag in self.get_agents(frame)}
+
     def get_sensor_ID(self, sensor: str, agent: int):
         return f"{sensor}-{agent}"
 
@@ -299,7 +309,7 @@ class CarlaSceneDataset(BaseSceneDataset):
         return self.sensor_frames[agent][sensor]
 
     def _load_timestamp(self, frame, sensor=None, agent=None, utime=False):
-        if (sensor is None) and (agent is None):
+        if sensor is None:
             return self.timestamps[self.frames == frame][0]
         else:
             return self.sensor_frame_to_ts[agent][sensor][frame]
@@ -411,6 +421,9 @@ class CarlaSceneDataset(BaseSceneDataset):
                 agent.change_reference(GlobalOrigin3D, inplace=False)
                 for agent in self.get_agents(frame)
             ]
+            # HACK: alter the ID of the agents to mitigate conflict
+            for agent in agents_as_objects:
+                agent.ID += 99999
             if ignore_static_agents:
                 agents_as_objects = [
                     agent

@@ -124,6 +124,9 @@ class BaseSceneDataset:
             frame in self.frames
         ), f"Candidate frame, {frame}, not in frame set {self.frames}"
 
+    def get_agent_set(self, frame: int) -> set:
+        return self._load_agent_set(frame=frame)
+
     def get_sensor_ID(self, sensor, agent=None):
         try:
             return self.sensor_IDs[sensor]
