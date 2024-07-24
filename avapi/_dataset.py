@@ -1,7 +1,7 @@
 import json
 import os
 import random
-from typing import Tuple, Union
+from typing import Iterable, Tuple, Union
 
 import numpy as np
 from avstack import calibration, sensors
@@ -44,7 +44,7 @@ def get_reference_from_line(line):
 
 
 class BaseSceneManager:
-    def __iter__(self):
+    def __iter__(self) -> Iterable["BaseSceneDataset"]:
         for scene in self.scenes:
             yield self.get_scene_dataset_by_name(scene)
 
