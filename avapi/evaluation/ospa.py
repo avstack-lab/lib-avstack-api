@@ -21,8 +21,8 @@ class OspaMetric:
         return distance
 
     @staticmethod
-    def cost(tracks: list, truths: list):
+    def cost(tracks: list, truths: list, p: float = 1.0, c: float = 1.0):
         if len(tracks) <= len(truths):
-            return OspaMetric._cost(tracks, truths)
+            return OspaMetric._cost(tracks, truths, p=p, c=c)
         else:
-            return OspaMetric._cost(truths, tracks)
+            return OspaMetric._cost(truths, tracks, p=p, c=c)

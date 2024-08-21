@@ -5,6 +5,7 @@ from typing import Iterable, Tuple, Union
 
 import numpy as np
 from avstack import calibration, sensors
+from avstack.datastructs import DataContainer
 from avstack.environment.objects import (
     ObjectState,
     ObjectStateDecoder,
@@ -267,32 +268,33 @@ class BaseSceneDataset:
         agent=None,
         max_dist=None,
         max_occ=None,
+        in_global: bool = False,
         **kwargs,
-    ):
+    ) -> DataContainer:
         reference = self.get_ego_reference(frame, agent=agent)
         sensor = self.get_sensor_name(sensor, agent=agent)
+        timestamp = self.get_timestamp(frame=frame, sensor=sensor, agent=agent)
         objs = self._load_objects(frame, sensor=sensor, agent=agent, **kwargs)
         if max_occ is not None:
-            objs = np.array(
-                [
+            objs = [
                     obj
                     for obj in objs
                     if (obj.occlusion <= max_occ)
                     or (obj.occlusion == Occlusion.UNKNOWN)
-                ]
-            )
+            ]
         if max_dist is not None:
             if sensor == "ego":
                 calib = calibration.Calibration(reference)
             else:
                 calib = self.get_calibration(frame, sensor, agent=agent)
-            objs = np.array(
-                [
+            objs = [
                     obj
                     for obj in objs
                     if obj.position.distance(calib.reference) < max_dist
-                ]
-            )
+            ]
+        objs = DataContainer(source_identifier=sensor, frame=frame, timestamp=timestamp, data=objs)
+        if in_global:
+            objs = objs.apply_and_return("change_reference", GlobalOrigin3D, inplace=False)
         return objs
 
     def get_objects_global(
@@ -300,7 +302,7 @@ class BaseSceneDataset:
         frame,
         max_dist: Union[Tuple[ReferenceFrame, float], None] = None,
         **kwargs,
-    ):
+    ) -> DataContainer:
         return self._load_objects_global(frame, max_dist=max_dist, **kwargs)
 
     def get_number_of_objects(self, frame, **kwargs):

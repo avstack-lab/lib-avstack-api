@@ -1,12 +1,3 @@
-# -*- coding: utf-8 -*-
-# @Author: Spencer H
-# @Date:   2022-09-05
-# @Last Modified by:   Spencer H
-# @Last Modified date: 2022-09-29
-# @Description:
-"""
-
-"""
 import logging
 import os
 import struct
@@ -59,18 +50,18 @@ class nuScenesManager(_nuManager):
             for k, vs in splits_scenes.items()
         }
 
-    def list_scenes(self):
+    def list_scenes(self) -> List[str]:
         self.nuX.list_scenes()
 
-    def get_scene_dataset_by_name(self, scene_name):
+    def get_scene_dataset_by_name(self, scene_name) -> "nuScenesSceneDataset":
         idx = self.scene_name_to_index[scene_name]
         return self.get_scene_dataset_by_index(idx)
 
-    def get_scene_dataset_by_scene_number(self, scene_number):
+    def get_scene_dataset_by_scene_number(self, scene_number) -> "nuScenesSceneDataset":
         idx = self.scene_number_to_index[scene_number]
         return self.get_scene_dataset_by_index(idx)
 
-    def get_scene_dataset_by_index(self, scene_idx):
+    def get_scene_dataset_by_index(self, scene_idx) -> "nuScenesSceneDataset":
         return nuScenesSceneDataset(
             self.data_dir,
             self.split,
