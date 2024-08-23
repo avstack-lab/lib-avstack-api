@@ -277,7 +277,7 @@ class CarlaSceneDataset(BaseSceneDataset):
     def get_sensor_name(self, sensor, agent):
         return sensor
 
-    def get_agents(self, frame: int):
+    def get_agents(self, frame: int) -> "DataContainer":
         return self._load_agents(frame)
 
     def get_agent(self, frame: int, agent: int):

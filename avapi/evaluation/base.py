@@ -16,7 +16,9 @@ from tqdm import tqdm
 from avapi.utils import color_from_object_type, get_indices_filenames_in_folder
 
 from ..visualize import snapshot
-from .metrics import precision, recall
+
+
+# from .metrics.assignment import precision, recall
 
 
 # =============================================

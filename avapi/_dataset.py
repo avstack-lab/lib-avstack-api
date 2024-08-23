@@ -277,10 +277,9 @@ class BaseSceneDataset:
         timestamp = self.get_timestamp(frame=frame, sensor=sensor, agent=agent)
         if max_occ is not None:
             objs = [
-                    obj
-                    for obj in objs
-                    if (obj.occlusion <= max_occ)
-                    or (obj.occlusion == Occlusion.UNKNOWN)
+                obj
+                for obj in objs
+                if (obj.occlusion <= max_occ) or (obj.occlusion == Occlusion.UNKNOWN)
             ]
         if max_dist is not None:
             if sensor == "ego":
@@ -288,13 +287,15 @@ class BaseSceneDataset:
             else:
                 calib = self.get_calibration(frame, sensor, agent=agent)
             objs = [
-                    obj
-                    for obj in objs
-                    if obj.position.distance(calib.reference) < max_dist
+                obj for obj in objs if obj.position.distance(calib.reference) < max_dist
             ]
-        objs = DataContainer(source_identifier=sensor, frame=frame, timestamp=timestamp, data=objs)
+        objs = DataContainer(
+            source_identifier=sensor, frame=frame, timestamp=timestamp, data=objs
+        )
         if in_global:
-            objs = objs.apply_and_return("change_reference", GlobalOrigin3D, inplace=False)
+            objs = objs.apply_and_return(
+                "change_reference", GlobalOrigin3D, inplace=False
+            )
         return objs
 
     def get_objects_global(
