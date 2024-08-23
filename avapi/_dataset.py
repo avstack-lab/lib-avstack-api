@@ -273,8 +273,8 @@ class BaseSceneDataset:
     ) -> DataContainer:
         reference = self.get_ego_reference(frame, agent=agent)
         sensor = self.get_sensor_name(sensor, agent=agent)
-        timestamp = self.get_timestamp(frame=frame, sensor=sensor, agent=agent)
         objs = self._load_objects(frame, sensor=sensor, agent=agent, **kwargs)
+        timestamp = self.get_timestamp(frame=frame, sensor=sensor, agent=agent)
         if max_occ is not None:
             objs = [
                     obj
