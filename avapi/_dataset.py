@@ -1,7 +1,7 @@
 import json
 import os
 import random
-from typing import Iterable, Tuple, Union
+from typing import Iterable, Tuple, Union, List
 
 import numpy as np
 from avstack import calibration, sensors
@@ -128,7 +128,7 @@ class BaseSceneDataset:
     def get_agent_set(self, frame: int) -> set:
         return self._load_agent_set(frame=frame)
 
-    def get_sensor_ID(self, sensor, agent=None):
+    def get_sensor_ID(self, sensor, agent=None) -> int:
         try:
             return self.sensor_IDs[sensor]
         except KeyError:
@@ -140,17 +140,17 @@ class BaseSceneDataset:
                 except KeyError as e:
                     raise e
 
-    def get_sensor_name(self, sensor, agent=None):
+    def get_sensor_name(self, sensor, agent=None) -> str:
         if (sensor is None) or (sensor not in self.sensors):
             return sensor
         else:
             return self.sensors[sensor]
 
-    def get_frames(self, sensor, agent=None):
+    def get_frames(self, sensor, agent=None) -> List[int]:
         sensor = self.get_sensor_name(sensor, agent=agent)
         return self._load_frames(sensor=sensor, agent=agent)
 
-    def get_calibration(self, frame, sensor, agent=None):
+    def get_calibration(self, frame, sensor, agent=None) -> calibration.Calibration:
         sensor = self.get_sensor_name(sensor, agent)
         ego_reference = self.get_ego_reference(frame)
         return self._load_calibration(
@@ -160,14 +160,14 @@ class BaseSceneDataset:
     def get_ego(self, frame, agent=None) -> ObjectState:
         return self._load_ego(frame)
 
-    def get_ego_reference(self, frame, agent=None):
+    def get_ego_reference(self, frame, agent=None) -> ReferenceFrame:
         return self.get_ego(frame).as_reference()
 
     def get_sensor_data_filepath(self, frame, sensor, agent=None):
         sensor = self.get_sensor_name(sensor=sensor, agent=agent)
         return self._load_sensor_data_filepath(frame, sensor=sensor, agent=agent)
 
-    def get_image(self, frame, sensor=None, agent=None):
+    def get_image(self, frame, sensor=None, agent=None) -> sensors.ImageData:
         sensor = self.get_sensor_name(sensor, agent=agent)
         ts = self.get_timestamp(frame, sensor, agent=agent)
         data = self._load_image(frame, sensor=sensor, agent=agent)
@@ -185,7 +185,7 @@ class BaseSceneDataset:
             channel_order="rgb",
         )
 
-    def get_semseg_image(self, frame, sensor=None, agent=None):
+    def get_semseg_image(self, frame, sensor=None, agent=None) -> sensors.SemanticSegmentationImageData:
         if sensor is None:
             sensor = self.sensors["semseg"]
         sensor = self.get_sensor_name(sensor, agent)
@@ -197,7 +197,7 @@ class BaseSceneDataset:
             ts, frame, data, calib, self.get_sensor_ID(cam_string, agent)
         )
 
-    def get_depth_image(self, frame, sensor=None, agent=None):
+    def get_depth_image(self, frame, sensor=None, agent=None) -> sensors.DepthImageData:
         if sensor is None:
             sensor = self.sensors["depth"]
         sensor = self.get_sensor_name(sensor, agent)
@@ -218,7 +218,7 @@ class BaseSceneDataset:
         min_range=None,
         max_range=None,
         with_panoptic=False,
-    ):
+    ) -> sensors.LidarData:
         if sensor is None:
             sensor = self.sensors["lidar"]
         sensor = self.get_sensor_name(sensor, agent)
@@ -246,7 +246,7 @@ class BaseSceneDataset:
         agent=None,
         min_range=None,
         max_range=None,
-    ):
+    ) -> sensors.RadarDataRazelRRT:
         if sensor is None:
             sensor = self.sensors["radar"]
         sensor = self.get_sensor_name(sensor, agent)
@@ -306,13 +306,13 @@ class BaseSceneDataset:
     ) -> DataContainer:
         return self._load_objects_global(frame, max_dist=max_dist, **kwargs)
 
-    def get_number_of_objects(self, frame, **kwargs):
+    def get_number_of_objects(self, frame, **kwargs) -> int:
         return self._number_objects_from_file(frame, **kwargs)
 
     def get_objects_from_file(self, fname, whitelist_types, max_dist=None):
         return self._load_objects_from_file(fname, whitelist_types, max_dist=max_dist)
 
-    def get_timestamp(self, frame, sensor=None, agent=None, utime=False):
+    def get_timestamp(self, frame, sensor=None, agent=None, utime=False) -> float:
         sensor = self.get_sensor_name(sensor, agent=agent)
         return self._load_timestamp(frame, sensor=sensor, agent=agent, utime=utime)
 
