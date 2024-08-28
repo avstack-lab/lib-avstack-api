@@ -414,10 +414,15 @@ def show_lidar_bev_with_boxes(
     lines=None,
     line_colors=None,
     bev_size=[500, 500],
-    colormethod="depth",
-    rescale=True,
-    show=True,
-    return_image=False,
+    fov=None,
+    fov_color: str = "#069Af3",
+    fov_filled: bool = True,
+    fov_filled_alpha: float = 0.1,
+    colormethod: str = "depth",
+    background_color: str = "black",
+    rescale: bool = True,
+    show: bool = True,
+    return_image: bool = False,
 ):
     """
     Show lidar and the detection results (optional) in BEV
@@ -503,7 +508,12 @@ def show_lidar_bev_with_boxes(
         max_width = max(max_width, max(bev_corners[:, 1]) + 2)
 
     # define the size of the image and scaling factor
-    img1 = 0 * np.ones([bev_size[0], bev_size[1], 3], dtype=np.uint8)
+    if background_color == "black":
+        img1 = 0 * np.ones([bev_size[0], bev_size[1], 3], dtype=np.uint8)
+    elif background_color == "white":
+        img1 = 255 * np.ones([bev_size[0], bev_size[1], 3], dtype=np.uint8)
+    else:
+        raise NotImplementedError(background_color)
     if extent is None:
         width_scale = (max_width - min_width) / bev_size[0]
         range_scale = (max_range - min_range) / bev_size[1]
@@ -515,6 +525,30 @@ def show_lidar_bev_with_boxes(
     sc_arr = np.array([range_scale, width_scale])
     pc_bev = (pc2[:, [0, 1]] - min_arr) / sc_arr
 
+    # add the field of view by blending
+    if fov is not None:
+        # add fov boundary without alpha
+        boundary_bev = ((fov.boundary[:, [0, 1]] - min_arr) / sc_arr).astype(int)
+        boundary_bev = boundary_bev.reshape((-1, 1, 2))
+        thickness = 3
+        cv2.polylines(
+            img=img1,
+            pts=[boundary_bev],
+            color=parse_color_string(fov_color),
+            thickness=thickness,
+            isClosed=True,
+        )
+        # add fov filled with alpha
+        if fov_filled:
+            img2 = img1.copy()
+            cv2.fillPoly(
+                img=img2,
+                pts=[boundary_bev],
+                color=parse_color_string(fov_color),
+            )
+        w = fov_filled_alpha
+        img1 = cv2.addWeighted(img1, 1 - w, img2, w, 0)
+
     # get colors for lidar pcs
     if colormethod == "depth":
         depths = np.linalg.norm(pc2[:, [0, 1]], axis=1)
@@ -524,6 +558,10 @@ def show_lidar_bev_with_boxes(
     elif "channel" in colormethod:
         channel = int(colormethod.split("-")[1])
         pt_colors = get_lidar_color(pc2[:, channel], mode="channel")
+    elif colormethod == "black":
+        pt_colors = 0 * np.ones((len(pc2), 3), dtype=float)
+    elif colormethod == "white":
+        pt_colors = 255 * np.ones((len(pc2), 3), dtype=float)
     else:
         raise NotImplementedError
 

@@ -1,7 +1,7 @@
 import json
 import os
 import random
-from typing import Iterable, Tuple, Union, List
+from typing import Iterable, List, Tuple, Union
 
 import numpy as np
 from avstack import calibration, sensors
@@ -185,7 +185,9 @@ class BaseSceneDataset:
             channel_order="rgb",
         )
 
-    def get_semseg_image(self, frame, sensor=None, agent=None) -> sensors.SemanticSegmentationImageData:
+    def get_semseg_image(
+        self, frame, sensor=None, agent=None
+    ) -> sensors.SemanticSegmentationImageData:
         if sensor is None:
             sensor = self.sensors["semseg"]
         sensor = self.get_sensor_name(sensor, agent)

@@ -122,6 +122,12 @@ def parse_color_string(cstring):
         # lcolor = (255, 255, 0)
     elif cstring == "brown":
         lcolor = (165, 42, 42)
+    elif cstring[0] == "#":
+        lcolor = hex_to_rgb(cstring[1:])
     else:
         raise ValueError(f"Unknown color type {cstring}")
     return lcolor
+
+
+def hex_to_rgb(hexa):
+    return tuple(int(hexa[i : i + 2], 16) for i in (0, 2, 4))
