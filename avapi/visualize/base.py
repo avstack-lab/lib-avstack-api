@@ -43,7 +43,7 @@ def draw_box2d(image, qs, color=(255, 255, 255), thickness=2):
 
 
 def draw_projected_box3d(
-    image, qs, color=(255, 255, 255), thickness=2, ID=None, fontscale=1
+    image, qs, color=(255, 255, 255), thickness=2, ID=None, fontscale=1, filled=False
 ):
     """Draw 3d bounding box in image
     qs: (8,3) array of vertices for the 3d box in following order:
@@ -132,5 +132,9 @@ def draw_projected_box3d(
             font_thickness,
             lineType,
         )
+
+    # fill the box if asked
+    if filled:
+        raise NotImplementedError
 
     return image

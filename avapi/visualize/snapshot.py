@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 from avstack import maskfilters
 from avstack.datastructs import DataContainer
-from avstack.environment.objects import VehicleState
+from avstack.environment.objects import ObjectState
 from avstack.geometry import Box2D, Box3D, bbox
 from avstack.geometry.transformations import project_to_image
 from avstack.modules.perception.detections import BoxDetection, MaskDetection
@@ -74,12 +74,12 @@ def show_boxes_bev(
         ):
             continue  # cannot show 2D boxes
         elif (
-            isinstance(box, (VehicleState, Box3D))
+            isinstance(box, (ObjectState, Box3D))
             or (isinstance(box, BoxDetection) and isinstance(box.box, Box3D))
             or (isinstance(box, BasicBoxTrack3D))
             or (isinstance(box, GroupTrack) and isinstance(box.state, BasicBoxTrack3D))
         ):
-            if isinstance(box, (BoxDetection, BasicBoxTrack3D, VehicleState)):
+            if isinstance(box, (BoxDetection, BasicBoxTrack3D, ObjectState)):
                 box = box.box
             elif isinstance(box, GroupTrack):
                 box = box.state.box
@@ -237,6 +237,7 @@ def show_image_with_boxes(
     boxes,
     inline=False,
     box_colors="green",
+    box_thickness=3,
     with_mask=False,
     show_IDs=True,
     fontscale=1,
@@ -286,13 +287,11 @@ def show_image_with_boxes(
 
         # Show box
         if isinstance(box, Box2D) or (
-            isinstance(
-                box, (VehicleState, BoxDetection, MaskDetection, BasicBoxTrack2D)
-            )
+            isinstance(box, (ObjectState, BoxDetection, MaskDetection, BasicBoxTrack2D))
             and isinstance(box.box, Box2D)
         ):
             if isinstance(
-                box, (VehicleState, BoxDetection, MaskDetection, BasicBoxTrack2D)
+                box, (ObjectState, BoxDetection, MaskDetection, BasicBoxTrack2D)
             ):
                 if isinstance(box, MaskDetection):
                     mask = box.mask
@@ -302,19 +301,19 @@ def show_image_with_boxes(
                 (int(box.xmin), int(box.ymin)),
                 (int(box.xmax), int(box.ymax)),
                 col,
-                2,
+                box_thickness,
             )
             bl_edge = (box.xmin, box.ymin)
             add_ID_to_image(img1, bl_edge, ID, fontscale=fontscale)
         elif (
             isinstance(box, (Box3D, BasicBoxTrack3D))
             or (
-                isinstance(box, (VehicleState, BoxDetection, MaskDetection))
+                isinstance(box, (ObjectState, BoxDetection, MaskDetection))
                 and isinstance(box.box, Box3D)
             )
             or (isinstance(box, GroupTrack) and isinstance(box.state, BasicBoxTrack3D))
         ):
-            if isinstance(box, (VehicleState, BasicBoxTrack3D)):
+            if isinstance(box, (ObjectState, BasicBoxTrack3D)):
                 box = box.box
             elif isinstance(box, (BoxDetection, MaskDetection)):
                 if isinstance(box, MaskDetection):
@@ -327,7 +326,12 @@ def show_image_with_boxes(
                     img.calibration
                 )
                 img1 = draw_projected_box3d(
-                    img1, corners_3d_in_image, color=col, ID=ID, fontscale=fontscale
+                    img1,
+                    corners_3d_in_image,
+                    thickness=box_thickness,
+                    color=col,
+                    ID=ID,
+                    fontscale=fontscale,
                 )
         elif isinstance(
             box,
@@ -352,7 +356,7 @@ def show_image_with_boxes(
                 (int(addbox[0]), int(addbox[1])),
                 (int(addbox[2]), int(addbox[3])),
                 (255, 0, 0),
-                2,
+                box_thickness,
             )
 
         # Show mask
@@ -406,6 +410,8 @@ def show_lidar_bev_with_boxes(
     extent=None,
     ground=None,
     box_colors="white",
+    box_filled=False,
+    box_thickness=3,
     filter_in_im=False,
     flipx=True,
     flipy=True,
@@ -483,12 +489,12 @@ def show_lidar_bev_with_boxes(
         ):
             continue  # cannot show 2D boxes
         elif (
-            isinstance(box, (VehicleState, Box3D))
+            isinstance(box, (ObjectState, Box3D))
             or (isinstance(box, BoxDetection) and isinstance(box.box, Box3D))
             or (isinstance(box, BasicBoxTrack3D))
             or (isinstance(box, GroupTrack) and isinstance(box.state, BasicBoxTrack3D))
         ):
-            if isinstance(box, (BoxDetection, BasicBoxTrack3D, VehicleState)):
+            if isinstance(box, (BoxDetection, BasicBoxTrack3D, ObjectState)):
                 box = box.box
             elif isinstance(box, GroupTrack):
                 box = box.state.box
@@ -590,7 +596,9 @@ def show_lidar_bev_with_boxes(
             ), f"{box_colors[i]}, {type(box_colors[i])}"
             lcolor = box_colors[i]
         box3d_pts_2d = (bev_corners - min_arr) / sc_arr
-        img1 = draw_projected_box3d(img1, box3d_pts_2d, color=lcolor, thickness=2)
+        img1 = draw_projected_box3d(
+            img1, box3d_pts_2d, color=lcolor, thickness=box_thickness, filled=box_filled
+        )
 
     # Add tracks
     for i, vec in enumerate(vectors):
