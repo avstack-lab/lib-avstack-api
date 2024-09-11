@@ -68,18 +68,21 @@ class CarlaScenesManager(BaseSceneManager):
     nominal_whitelist_types = _nominal_whitelist_types
     nominal_ignore_types = _nominal_ignore_types
 
-    def __init__(self, data_dir, split=None, verbose=False):
+    def __init__(self, data_dir, verbose=False,
+                 split_fracs = {"train": 0.6, "val": 0.2, "test": 0.2}, seed: int = 1):
         """
         data_dir: the base folder where all scenes are kept
         """
         if not os.path.exists(data_dir):
             raise RuntimeError(f"Cannot find data dir at {data_dir}")
         self.data_dir = data_dir
-        self.split = split
         self.verbose = verbose
         self.scenes = sorted(next(os.walk(data_dir))[1])
         self.splits_scenes = self.make_splits_scenes(
-            seed=1, frac_train=0.7, frac_val=0.3
+            seed=seed,
+            frac_train=split_fracs["train"],
+            frac_val=split_fracs["val"],
+            frac_test=split_fracs["test"],
         )
 
     def get_scene_dataset_by_index(self, scene_idx):

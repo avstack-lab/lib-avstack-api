@@ -62,11 +62,14 @@ class BaseSceneManager:
     def get_splits_scenes(self):
         return self.splits_scenes
 
-    def make_splits_scenes(self, seed=1, frac_train=0.7, frac_val=0.3):
+    def make_splits_scenes(self, seed=1, frac_train=0.7, frac_val=0.3, frac_test=0.0):
         """Split the scenes by hashing the experiment name and modding
         3:1 split using mod 4
         """
         rng = random.Random(seed)
+
+        if not (frac_train + frac_val + frac_test) == 1.0:
+            raise ValueError("Fractions must add to 1.0")
 
         # first two we alternate just to have one
         splits_scenes = {"train": [], "val": [], "test": []}
