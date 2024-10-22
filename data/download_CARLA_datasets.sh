@@ -2,7 +2,7 @@
 
 set -e
 
-VERSION=${1:-"object-v1"}  # object dataset --> "object-v1", collaborative dataset --> "collab-v1"
+VERSION=${1:-"multi-agent-v1"}
 DATAFOLDER=${2:-/data/$(whoami)}
 MAXFILES=${3:-10}
 
@@ -11,11 +11,12 @@ DATAFOLDER="${DATAFOLDER}/CARLA"
 
 DOWNLOAD="https://g-b0ef78.1d0d8d.03c0.data.globus.org/datasets/carla"
 
-if [ "$VERSION" = "ego-lidar" ]; then
+if [ "$VERSION" = "multi-agent-v1" ]; then
     echo "Preparing to download ego-lidar dataset..."
-    SAVESUB="ego-lidar"
-    SUBDIR="ego-lidar"
-    files=(run_2022_10_27_10-20-59
+    SAVESUB="multi-agent-v1"
+    SUBDIR="multi-agent-v1"
+    files=(
+        run_2022_10_27_10-20-59
         run_2022_10_27_10-27-53
         run_2022_10_27_10-34-42
         run_2022_10_27_10-42-06
@@ -28,18 +29,8 @@ if [ "$VERSION" = "ego-lidar" ]; then
         run_2022_10_27_11-43-45
         run_2022_10_27_11-50-37
     )
-elif [ "$VERSION" = "multi-agent-v1" ]; then
-    echo "Preparing to download multi-agent v1..."
-    SAVESUB="multi-agent-v1"
-    SUBDIR="multi-agent-v1"
-    files=(run_2022_10_31_13-34-52
-        run_2022_10_31_13-46-21
-    	run_2022_10_31_13-57-59
-        run_2022_10_31_14-09-42
-        run_2022_10_31_14-21-09
-    )
 else
-    echo "Cannot understand input version ${VERSION}! Currently can only use 'ego-lidar' and 'multi-agent-v1'"
+    echo "Cannot understand input version ${VERSION}! Currently can only use 'multi-agent-v1'"
 fi
 
 SAVEFULL="${DATAFOLDER}/${SAVESUB}"
