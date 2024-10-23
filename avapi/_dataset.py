@@ -194,8 +194,8 @@ class BaseSceneDataset:
         if sensor is None:
             sensor = self.sensors["semseg"]
         sensor = self.get_sensor_name(sensor, agent)
-        ts = self.get_timestamp(frame, sensor)
-        data = self._load_semseg_image(frame, sensor=sensor)
+        ts = self.get_timestamp(frame, sensor=sensor, agent=agent)
+        data = self._load_semseg_image(frame, sensor=sensor, agent=agent)
         cam_string = "image-%i" % sensor if isinstance(sensor, int) else sensor
         calib = self.get_calibration(frame, cam_string)
         return sensors.SemanticSegmentationImageData(
@@ -206,10 +206,10 @@ class BaseSceneDataset:
         if sensor is None:
             sensor = self.sensors["depth"]
         sensor = self.get_sensor_name(sensor, agent)
-        ts = self.get_timestamp(frame, sensor)
-        data = self._load_depth_image(frame, sensor=sensor)
+        ts = self.get_timestamp(frame, sensor=sensor, agent=agent)
+        data = self._load_depth_image(frame, sensor=sensor, agent=agent)
         cam_string = "image-%i" % sensor if isinstance(sensor, int) else sensor
-        calib = self.get_calibration(frame, cam_string)
+        calib = self.get_calibration(frame, sensor=cam_string, agent=agent)
         return sensors.DepthImageData(
             ts, frame, data, calib, self.get_sensor_ID(cam_string, agent)
         )
