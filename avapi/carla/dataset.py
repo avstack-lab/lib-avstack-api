@@ -408,7 +408,7 @@ class CarlaSceneDataset(BaseSceneDataset):
         whitelist_types="all",
         ignore_types=[],
         include_agents=True,
-        ignore_static_agents=False,
+        ignore_static_agents=True,
         max_dist: Union[Tuple[ReferenceFrame, float], None] = None,
     ):
         timestamp = None
