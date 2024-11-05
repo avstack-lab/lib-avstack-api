@@ -299,6 +299,11 @@ class CarlaSceneDataset(BaseSceneDataset):
 
     def _load_agents(self, frame):
         timestamp = None
+        if frame is None:
+            frame = self.get_frames(
+                sensor="camera-0",
+                agent=0,
+            )[0]
         filepath = self.get_object_file(frame, timestamp, is_agent=True, is_global=True)
         return read_agents_from_file(filepath)
 
