@@ -52,6 +52,9 @@ class BaseSceneManager:
     def __len__(self):
         return len(self.scenes)
 
+    def __getitem__(self, index):
+        return self.get_scene_dataset_by_index(index)
+
     @property
     def name(self):
         return self.NAME
