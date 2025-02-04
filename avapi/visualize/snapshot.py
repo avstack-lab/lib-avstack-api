@@ -235,6 +235,7 @@ def show_lidar_on_image(
 def show_image_with_boxes(
     img,
     boxes,
+    text=None,
     inline=False,
     box_colors="green",
     box_thickness=3,
@@ -289,13 +290,14 @@ def show_image_with_boxes(
         if isinstance(box, Box2D) or (
             isinstance(box, (ObjectState, BoxDetection, MaskDetection, BasicBoxTrack2D))
             and isinstance(box.box, Box2D)
-        ):
+        ): 
             if isinstance(
                 box, (ObjectState, BoxDetection, MaskDetection, BasicBoxTrack2D)
             ):
                 if isinstance(box, MaskDetection):
                     mask = box.mask
                 box = box.box
+            # add box
             cv2.rectangle(
                 img1,
                 (int(box.xmin), int(box.ymin)),
@@ -304,7 +306,11 @@ def show_image_with_boxes(
                 box_thickness,
             )
             bl_edge = (box.xmin, box.ymin)
-            add_ID_to_image(img1, bl_edge, ID, fontscale=fontscale)
+            # add text
+            if text is not None:
+                add_text_to_image(img1, bl_edge, text[i], fontscale=fontscale)
+            # add id
+            add_text_to_image(img1, bl_edge, ID, fontscale=fontscale)
         elif (
             isinstance(box, (Box3D, BasicBoxTrack3D))
             or (
@@ -347,7 +353,7 @@ def show_image_with_boxes(
                 img1, (int(pt[0]), int(pt[1])), radius, color=(0, 255, 0), thickness=-1
             )
             bl_edge = (pt[0], pt[1])
-            add_ID_to_image(img1, bl_edge, ID, fontscale=fontscale)
+            add_text_to_image(img1, bl_edge, ID, fontscale=fontscale)
         else:
             raise NotImplementedError(type(box))
         if addbox:
@@ -379,8 +385,8 @@ def show_image_with_boxes(
         return img1
 
 
-def add_ID_to_image(img, bl_edge, ID, fontscale=1):
-    if ID is not None:
+def add_text_to_image(img, bl_edge, text, fontscale=1):
+    if text is not None:
         # name on top of box
         font = cv2.FONT_HERSHEY_SIMPLEX
         edge = 15
@@ -389,18 +395,22 @@ def add_ID_to_image(img, bl_edge, ID, fontscale=1):
             max(edge, bl_edge[1] - sep)
         )
         fontColor = (255, 255, 255)
-        font_thickness = 1
+        font_thickness = 2
         lineType = 2
-        cv2.putText(
-            img,
-            str(ID),
-            bottomLeftCornerOfText,
-            font,
-            fontscale,
-            fontColor,
-            font_thickness,
-            lineType,
-        )
+        x, y = bottomLeftCornerOfText
+        dy = 10
+        for line in str(text).splitlines():
+            cv2.putText(
+                img,
+                line,
+                (x, y),
+                font,
+                fontscale,
+                fontColor,
+                font_thickness,
+                lineType,
+            )
+            y += 20
 
 
 def show_lidar_bev_with_boxes(
