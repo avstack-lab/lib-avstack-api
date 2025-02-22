@@ -36,12 +36,13 @@ def show_image(img, extent=None, axis=False, inline=True, grayscale=False):
     if inline:
         pil_im = Image.fromarray(img)
         plt.figure(figsize=[2 * x for x in plt.rcParams["figure.figsize"]])
-        plt.imshow(pil_im, extent=extent, cmap=("gray" if grayscale else None))
+        img_plot = plt.imshow(pil_im, extent=extent, cmap=("gray" if grayscale else None))
         if not axis:
             plt.axis("off")
         plt.show()
     else:
-        Image.fromarray(img).show()
+        img_plot = Image.fromarray(img).show()
+    return img_plot
 
 
 def show_boxes_bev(
@@ -242,6 +243,7 @@ def show_image_with_boxes(
     with_mask=False,
     show_IDs=True,
     fontscale=1,
+    font_thickness=3,
     show=True,
     return_image=False,
     addbox=[],
@@ -308,9 +310,9 @@ def show_image_with_boxes(
             bl_edge = (box.xmin, box.ymin)
             # add text
             if text is not None:
-                add_text_to_image(img1, bl_edge, text[i], fontscale=fontscale)
+                add_text_to_image(img1, bl_edge, text[i], fontscale=fontscale, font_thickness=font_thickness)
             # add id
-            add_text_to_image(img1, bl_edge, ID, fontscale=fontscale)
+            add_text_to_image(img1, bl_edge, ID, fontscale=fontscale, font_thickness=font_thickness)
         elif (
             isinstance(box, (Box3D, BasicBoxTrack3D))
             or (
@@ -385,7 +387,7 @@ def show_image_with_boxes(
         return img1
 
 
-def add_text_to_image(img, bl_edge, text, fontscale=1):
+def add_text_to_image(img, bl_edge, text, fontscale=1, font_thickness=3):
     if text is not None:
         # name on top of box
         font = cv2.FONT_HERSHEY_SIMPLEX
@@ -395,7 +397,6 @@ def add_text_to_image(img, bl_edge, text, fontscale=1):
             max(edge, bl_edge[1] - sep)
         )
         fontColor = (255, 255, 255)
-        font_thickness = 2
         lineType = 2
         x, y = bottomLeftCornerOfText
         dy = 10
@@ -439,6 +440,7 @@ def show_lidar_bev_with_boxes(
     rescale: bool = True,
     show: bool = True,
     return_image: bool = False,
+    scale_return_image: bool = False,
 ):
     """
     Show lidar and the detection results (optional) in BEV
@@ -473,6 +475,20 @@ def show_lidar_bev_with_boxes(
     else:
         pc2 = pc.data
 
+    # update extent
+    if extent is not None:
+        extent_max = [
+            (min(pc[:, 0]), max(pc[:, 1])),
+            (min(pc[:, 1]), max(pc[:, 1])),
+            (min(pc[:, 2]), max(pc[:, 2]))
+        ]
+        extent_use = []
+        for ex, ex_max in zip(extent, extent_max):
+            ex_in = [e1 if e1 is not None else em for e1, em in zip(ex, ex_max)]
+            extent_use.append(tuple(ex_in))
+    else:
+        extent_use = extent
+
     # Get maxes and mins
     if rescale:
         if pc2.shape[0] > 0:
@@ -486,9 +502,9 @@ def show_lidar_bev_with_boxes(
             min_width = 0
             max_width = 0
     else:
-        assert extent is not None
-        min_range, max_range = extent[0]
-        min_width, max_width = extent[1]
+        assert extent_use is not None
+        min_range, max_range = extent_use[0]
+        min_width, max_width = extent_use[1]
 
     boxes_show = []
     boxes_show_corners = []
@@ -523,6 +539,10 @@ def show_lidar_bev_with_boxes(
         min_width = min(min_width, min(bev_corners[:, 1]) - 2)
         max_width = max(max_width, max(bev_corners[:, 1]) + 2)
 
+    # update extent with new ranges/widths
+    extent_use[0] = (min(min_range, extent_use[0][0]), max(max_range, extent_use[0][1]))
+    extent_use[1] = (min(min_width, extent_use[1][0]), max(max_width, extent_use[1][1]))
+
     # define the size of the image and scaling factor
     if background_color == "black":
         img1 = 0 * np.ones([bev_size[0], bev_size[1], 3], dtype=np.uint8)
@@ -530,14 +550,16 @@ def show_lidar_bev_with_boxes(
         img1 = 255 * np.ones([bev_size[0], bev_size[1], 3], dtype=np.uint8)
     else:
         raise NotImplementedError(background_color)
-    if extent is None:
+    
+    # get scaling
+    if extent_use is None:
         width_scale = (max_width - min_width) / bev_size[0]
         range_scale = (max_range - min_range) / bev_size[1]
         min_arr = np.array([min_range, min_width])
     else:
-        width_scale = (extent[1][1] - extent[1][0]) / bev_size[0]
-        range_scale = (extent[0][1] - extent[0][0]) / bev_size[1]
-        min_arr = np.array([extent[0][0], extent[1][0]])
+        width_scale = (extent_use[1][1] - extent_use[1][0]) / bev_size[0]
+        range_scale = (extent_use[0][1] - extent_use[0][0]) / bev_size[1]
+        min_arr = np.array([extent_use[0][0], extent_use[1][0]])
     sc_arr = np.array([range_scale, width_scale])
     pc_bev = (pc2[:, [0, 1]] - min_arr) / sc_arr
 
@@ -646,10 +668,11 @@ def show_lidar_bev_with_boxes(
         else:
             raise RuntimeError("Unknown line type")
 
-    if extent is None:
-        viz_extent = [min_range, max_range, min_width, max_width]
+    nominal_extent = [min_range, max_range, min_width, max_width]
+    if extent_use is None:
+        viz_extent = nominal_extent
     else:
-        viz_extent = [*extent[0], *extent[1]]
+        viz_extent = [*extent_use[0], *extent_use[1]]
 
     if flipx:
         img1 = np.flip(img1, axis=1)
@@ -662,6 +685,15 @@ def show_lidar_bev_with_boxes(
         viz_extent = [viz_extent[2], viz_extent[3], viz_extent[0], viz_extent[1]]
 
     if show:
-        show_image(img1, extent=viz_extent, inline=inline)
+        img_plot = show_image(img1, extent=viz_extent, inline=inline)
+        image_array = img_plot.get_array()
+
     if return_image:
-        return img1
+        if scale_return_image:
+            scale_ratio = width_scale / range_scale
+            dx = bev_size[0]*scale_ratio if scale_ratio > 1 else bev_size[0]
+            dy = bev_size[1]/scale_ratio if scale_ratio < 1 else bev_size[1]
+            new_size = (int(dx), int(dy))
+            return cv2.resize(img1, new_size)
+        else:
+            return img1
