@@ -68,8 +68,13 @@ class CarlaScenesManager(BaseSceneManager):
     nominal_whitelist_types = _nominal_whitelist_types
     nominal_ignore_types = _nominal_ignore_types
 
-    def __init__(self, data_dir, verbose=False,
-                 split_fracs = {"train": 0.6, "val": 0.2, "test": 0.2}, seed: int = 1):
+    def __init__(
+        self,
+        data_dir,
+        verbose=False,
+        split_fracs={"train": 0.6, "val": 0.2, "test": 0.2},
+        seed: int = 1,
+    ):
         """
         data_dir: the base folder where all scenes are kept
         """
