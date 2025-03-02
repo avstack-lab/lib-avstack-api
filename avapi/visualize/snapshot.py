@@ -550,8 +550,9 @@ def show_lidar_bev_with_boxes(
         max_width = max(max_width, max(bev_corners[:, 1]) + 2)
 
     # update extent with new ranges/widths
-    extent_use[0] = (min(min_range, extent_use[0][0]), max(max_range, extent_use[0][1]))
-    extent_use[1] = (min(min_width, extent_use[1][0]), max(max_width, extent_use[1][1]))
+    if extent_use is not None:
+        extent_use[0] = (min(min_range, extent_use[0][0]), max(max_range, extent_use[0][1]))
+        extent_use[1] = (min(min_width, extent_use[1][0]), max(max_width, extent_use[1][1]))
 
     # define the size of the image and scaling factor
     if background_color == "black":
