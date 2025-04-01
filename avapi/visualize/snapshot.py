@@ -551,8 +551,14 @@ def show_lidar_bev_with_boxes(
 
     # update extent with new ranges/widths
     if extent_use is not None:
-        extent_use[0] = (min(min_range, extent_use[0][0]), max(max_range, extent_use[0][1]))
-        extent_use[1] = (min(min_width, extent_use[1][0]), max(max_width, extent_use[1][1]))
+        extent_use[0] = (
+            min(min_range, extent_use[0][0]),
+            max(max_range, extent_use[0][1]),
+        )
+        extent_use[1] = (
+            min(min_width, extent_use[1][0]),
+            max(max_width, extent_use[1][1]),
+        )
 
     # define the size of the image and scaling factor
     if background_color == "black":
@@ -568,6 +574,15 @@ def show_lidar_bev_with_boxes(
         range_scale = (max_range - min_range) / bev_size[1]
         min_arr = np.array([min_range, min_width])
     else:
+        # update extent with new ranges/widths
+        extent_use[0] = (
+            min(min_range, extent_use[0][0]),
+            max(max_range, extent_use[0][1]),
+        )
+        extent_use[1] = (
+            min(min_width, extent_use[1][0]),
+            max(max_width, extent_use[1][1]),
+        )
         width_scale = (extent_use[1][1] - extent_use[1][0]) / bev_size[0]
         range_scale = (extent_use[0][1] - extent_use[0][0]) / bev_size[1]
         min_arr = np.array([extent_use[0][0], extent_use[1][0]])
@@ -579,6 +594,7 @@ def show_lidar_bev_with_boxes(
         # add fov boundary without alpha
         boundary_bev = ((fov.boundary[:, [0, 1]] - min_arr) / sc_arr).astype(int)
         boundary_bev = boundary_bev.reshape((-1, 1, 2))
+
         thickness = 3
         cv2.polylines(
             img=img1,

@@ -5,6 +5,7 @@ import avapi.mot15
 import avapi.nuimages
 import avapi.nuscenes
 import avapi.opv2v
+import avapi.ugv
 import avapi.visualize
 
 

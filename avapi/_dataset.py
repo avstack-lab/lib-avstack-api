@@ -131,6 +131,13 @@ class BaseSceneDataset:
             frame in self.frames
         ), f"Candidate frame, {frame}, not in frame set {self.frames}"
 
+    def get_agents(self, frame: int) -> "DataContainer":
+        return self._load_agents(frame)
+
+    def get_agent(self, frame: int, agent: int):
+        agents = self.get_agents(frame)
+        return [ag for ag in agents if ag.ID == agent][0]
+
     def get_agent_set(self, frame: int) -> set:
         return self._load_agent_set(frame=frame)
 
@@ -337,19 +344,25 @@ class BaseSceneDataset:
             os.makedirs(folder)
         self._save_objects(frame, objects, folder, file=file)
 
+    def _load_agents(self, frame):
+        raise NotImplementedError
+
+    def _load_ego(self, frame, agent=None):
+        raise NotImplementedError
+
     def _load_frames(self, sensor):
         raise NotImplementedError
 
     def _load_calibration(self, frame, sensor, reference):
         raise NotImplementedError
 
-    def _load_image(self, frame, camera, agent=None):
+    def _load_image(self, frame, sensor, agent=None):
         raise NotImplementedError
 
-    def _load_semseg_image(self, frame, camera, agent=None):
+    def _load_semseg_image(self, frame, sensor, agent=None):
         raise NotImplementedError
 
-    def _load_depth_image(self, frame, camera, agent=None):
+    def _load_depth_image(self, frame, sensor, agent=None):
         raise NotImplementedError
 
     def _load_lidar(self, frame, sensor, agent=None):
@@ -631,7 +644,7 @@ class _nuBaseDataset(BaseSceneDataset):
         self.nuX = nuX
         self.nuX_can = nuX_can
         if nuX_can is not None:
-            self.vehicle_pose = self.nuX_can.get_messages(self.scene["name"], "pose")
+            self.vehicle_pose = self.nuX_can.get_messages(self.scene, "pose")
             self.vehicle_pose_utime = np.array(
                 [vp["utime"] for vp in self.vehicle_pose]
             )
@@ -694,6 +707,10 @@ class _nuBaseDataset(BaseSceneDataset):
 
     def _load_frames(self, **kwargs):
         return self.frames
+
+    def _load_agent_set(self, frame: int) -> set:
+        # TODO: this is slow...improve
+        return {ag.ID for ag in self.get_agents(frame)}
 
     def _load_calibration(self, frame, ego_reference, sensor=None, **kwargs):
         """
@@ -775,7 +792,7 @@ class _nuBaseDataset(BaseSceneDataset):
         box3d = Box3D(x_G_to_E_in_G, q_G_to_E, self.hwl, ID=-1)
 
         # -- set up ego in global reference frame
-        veh = VehicleState(obj_type="car")
+        veh = VehicleState(obj_type="car", ID=1000)
         veh.set(
             t=t,
             position=x_G_to_E_in_G,

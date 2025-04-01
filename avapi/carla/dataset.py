@@ -285,13 +285,6 @@ class CarlaSceneDataset(BaseSceneDataset):
     def get_sensor_name(self, sensor, agent):
         return sensor
 
-    def get_agents(self, frame: int) -> "DataContainer":
-        return self._load_agents(frame)
-
-    def get_agent(self, frame: int, agent: int):
-        agents = self.get_agents(frame)
-        return [ag for ag in agents if ag.ID == agent][0]
-
     def _load_agent_set(self, frame: int) -> set:
         # TODO: this is slow...improve
         return {ag.ID for ag in self.get_agents(frame)}

@@ -4,6 +4,7 @@ import struct
 from typing import List
 
 import numpy as np
+from avstack.config import DATASETS
 from avstack.geometry.transformations import matrix_cartesian_to_spherical
 from scipy.interpolate import interp1d
 
@@ -26,10 +27,11 @@ except ModuleNotFoundError as e:
     splits_scenes = None
 
 
+@DATASETS.register_module()
 class nuScenesManager(_nuManager):
     NAME = "nuScenes"
 
-    def __init__(self, data_dir, split="v1.0-mini", verbose=False):
+    def __init__(self, data_dir, split="v1.0-mini", max_scenes=None, verbose=False):
         nusc = NuScenes(version=split, dataroot=data_dir, verbose=verbose)
         try:
             nusc_can = NuScenesCanBus(dataroot=data_dir)
@@ -40,8 +42,11 @@ class nuScenesManager(_nuManager):
         self.scene_name_to_index = {}
         self.scene_number_to_index = {}
         self.index_to_scene = {}
-        self.scenes = [sc["name"] for sc in nusc.scene]
-        for i, sc in enumerate(nusc.scene):
+        n_scenes = (
+            len(nusc.scene) if max_scenes is None else min(len(nusc.scene), max_scenes)
+        )
+        self.scenes = [sc["name"] for sc in nusc.scene][:n_scenes]
+        for i, sc in enumerate(nusc.scene[:n_scenes]):
             self.scene_name_to_index[sc["name"]] = i
             self.scene_number_to_index[int(sc["name"].replace("scene-", ""))] = i
             self.index_to_scene[i] = sc["name"]
@@ -128,13 +133,13 @@ class nuScenesSceneDataset(_nuBaseDataset):
         except Exception as e:
             logging.warning("Cannot find CAN bus data")
             nusc_can = None
-        self.scene = scene
-        self.scene_name = self.scene
+        self.scene = scene["name"]
+        self.sequence = scene  # a dictionary
         self.framerate = 2
         self.sequence_id = scene["name"]
         self.splits_scenes = splits_scenes
         try:
-            veh_speed = self.nuX_can.get_messages(self.scene["name"], "vehicle_monitor")
+            veh_speed = self.nuX_can.get_messages(self.scene, "vehicle_monitor")
         except Exception as e:
             self.ego_speed_interp = None
         else:
@@ -151,13 +156,16 @@ class nuScenesSceneDataset(_nuBaseDataset):
 
     def make_sample_records(self):
         self.sample_records = {
-            0: self.nuX.get("sample", self.scene["first_sample_token"])
+            0: self.nuX.get("sample", self.sequence["first_sample_token"])
         }
-        for i in range(1, self.scene["nbr_samples"], 1):
+        for i in range(1, self.sequence["nbr_samples"], 1):
             self.sample_records[i] = self.nuX.get(
                 "sample", self.sample_records[i - 1]["next"]
             )
         self.t0 = self.sample_records[0]["timestamp"] / 1e6
+
+    def get_agents(self, frame: int) -> List:
+        return [self._load_ego(frame=frame)]
 
     def _load_lidar(
         self,
