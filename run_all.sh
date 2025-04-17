@@ -6,7 +6,7 @@ set -xe
 
 # mv ../../examples/lidar-results/run* /data/spencer/CARLA/ego-lidar/
 
-cd ../lib-avstack-core/third_party/mmdetection3d/CUSTOM
+cd ../avstack-core/third_party/mmdetection3d/CUSTOM
 
 ./convert_carla_vehicle.sh
 

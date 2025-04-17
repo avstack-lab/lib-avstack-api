@@ -12,19 +12,19 @@ See [`avstack-core`][avstack-core]
 
 First, clone the repositry and submodules.
 ```
-git clone --recurse-submodules https://github.com/avstack-lab/lib-avstack-api.git 
+git clone --recurse-submodules https://github.com/avstack-lab/avstack-api.git 
 ```
 Dependencies are managed with [`poetry`][poetry]. This uses the `pyproject.toml` file to create a `poetry.lock` file. 
 
 You must already have downloaded [`avstack-core`][avstack-core] and placed it in a location commensurate with this repository's `pyproject.toml` file. For example, if `pyproject.toml` says 
 ```
-lib-avstack-core = { path = "../lib-avstack-core", develop = true }
+avstack-core = { path = "../avstack-core", develop = true }
 ```
-then `lib-avstack-core` must be placed in the same folder as `lib-avstack-api`. 
+then `avstack-core` must be placed in the same folder as `avstack-api`. 
 
 ### Datasets
 
-See [the dataset README file](https://github.com/avstack-lab/lib-avstack-api/data/README.md)
+See [the dataset README file](https://github.com/avstack-lab/avstack-api/data/README.md)
 
 ### Simulators
 
@@ -50,7 +50,7 @@ in the project root, you can use our pre-made pre-commit hook.
 
 # Contributing
 
-See [CONTRIBUTING.md](https://github.com/avstack-lab/lib-avstack-core/CONTRIBUTING.md) for further details.
+See [CONTRIBUTING.md](https://github.com/avstack-lab/avstack-core/CONTRIBUTING.md) for further details.
 
 # LICENSE
 
@@ -60,6 +60,6 @@ AVstack specific code is distributed under the MIT License.
 
 
 [poetry]: https://github.com/python-poetry/poetry
-[avstack-core]: https://github.com/avstack-lab/lib-avstack-core
+[avstack-core]: https://github.com/avstack-lab/avstack-core
 [avstack-preprint]: https://arxiv.org/pdf/2212.13857.pdf
 [carla-sandbox]: https://github.com/avstack-lab/carla-sandbox

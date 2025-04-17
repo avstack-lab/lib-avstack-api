@@ -59,4 +59,4 @@ Depending on your computation resources and internet speeds, it may be faster to
 
 [nuscenes-download]: https://www.nuscenes.org/nuscenes#download\
 [generate-carla-dataset]: https://github/com/avstack-lab/carla-sandbox/docs/how-to-guides/generate-collaborative-dataset.md
-[symlinks]: https://github.com/avstack-lab/lib-avstack-api/blob/main/data/add_custom_symlinks.sh
+[symlinks]: https://github.com/avstack-lab/avstack-api/blob/main/data/add_custom_symlinks.sh
