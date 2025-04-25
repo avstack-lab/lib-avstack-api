@@ -5,6 +5,7 @@ from typing import List
 
 import numpy as np
 from avstack.config import DATASETS
+from avstack.environment.objects import VehicleState
 from avstack.geometry.transformations import matrix_cartesian_to_spherical
 from scipy.interpolate import interp1d
 
@@ -164,8 +165,18 @@ class nuScenesSceneDataset(_nuBaseDataset):
             )
         self.t0 = self.sample_records[0]["timestamp"] / 1e6
 
-    def get_agents(self, frame: int) -> List:
+    def get_agents(self, frame: int) -> List[VehicleState]:
         return [self._load_ego(frame=frame)]
+
+    def _load_sensor_names_by_type(self, sensor_type, **kwargs):
+        if sensor_type.lower() == "camera":
+            return [sID for sID in self.sensor_IDs if "CAM" in sID]
+        elif sensor_type.lower() == "lidar":
+            return [sID for sID in self.sensor_IDs if "LIDAR" in sID]
+        elif sensor_type.lower() == "radar":
+            return [sID for sID in self.sensor_IDs if "RADAR" in sID]
+        else:
+            raise NotImplementedError(sensor_type)
 
     def _load_lidar(
         self,

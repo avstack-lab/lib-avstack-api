@@ -134,7 +134,7 @@ class BaseSceneDataset:
     def get_agents(self, frame: int) -> "DataContainer":
         return self._load_agents(frame)
 
-    def get_agent(self, frame: int, agent: int):
+    def get_agent(self, frame: int, agent: int) -> List[VehicleState]:
         agents = self.get_agents(frame)
         return [ag for ag in agents if ag.ID == agent][0]
 
@@ -158,6 +158,9 @@ class BaseSceneDataset:
             return sensor
         else:
             return self.sensors[sensor]
+        
+    def get_sensor_names_by_type(self, sensor_type: str, agent=None) -> List[str]:
+        return self._load_sensor_names_by_type(sensor_type=sensor_type, agent=agent)
 
     def get_frames(self, sensor, agent=None) -> List[int]:
         sensor = self.get_sensor_name(sensor, agent=agent)
@@ -344,6 +347,9 @@ class BaseSceneDataset:
             os.makedirs(folder)
         self._save_objects(frame, objects, folder, file=file)
 
+    def _load_sensor_names_by_type(self, sensor_type, agent):
+        raise NotImplementedError
+
     def _load_agents(self, frame):
         raise NotImplementedError
 
@@ -371,8 +377,8 @@ class BaseSceneDataset:
     def _load_objects(self, frame, sensor, agent=None):
         raise NotImplementedError
 
-    def _load_sensor_data_filepath(self, frame, sensor: str):
-        return self._get_sensor_file_name(frame, sensor)
+    def _load_sensor_data_filepath(self, frame, sensor: str, agent=None):
+        return self._get_sensor_file_name(frame, sensor, agent=agent)
 
     def _load_objects_from_file(
         self,
@@ -752,7 +758,7 @@ class _nuBaseDataset(BaseSceneDataset):
         img_fname = self._get_sensor_file_name(frame, sensor)
         return imread(img_fname)
 
-    def _load_ego(self, frame, **kwargs):
+    def _load_ego(self, frame, **kwargs) -> VehicleState:
         ref = GlobalOrigin3D
         if self.vehicle_pose is not None:
             try:
