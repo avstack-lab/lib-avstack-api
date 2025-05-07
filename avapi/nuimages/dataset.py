@@ -7,7 +7,7 @@ try:
 except ModuleNotFoundError as e:
     print("Cannot import nuimages")
 
-from .._dataset import _nuBaseDataset
+from .._nutonomy import _nuBaseDataset
 
 
 class nuImagesDataset(_nuBaseDataset):
