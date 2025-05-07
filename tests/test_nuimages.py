@@ -5,7 +5,7 @@
 import logging
 import os
 
-from avapi.nuimages import nuImagesDataset
+from avapi.nutonomy import nuImagesDataset
 
 
 nuImages_data_dir = os.path.join(os.getcwd(), "data/nuImages")

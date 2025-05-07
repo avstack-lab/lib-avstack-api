@@ -9,7 +9,7 @@ from avstack.environment.objects import VehicleState
 from avstack.geometry.transformations import matrix_cartesian_to_spherical
 from scipy.interpolate import interp1d
 
-from .._dataset import (
+from .._nutonomy import (
     _nominal_ignore_types,
     _nominal_whitelist_types,
     _nuBaseDataset,
