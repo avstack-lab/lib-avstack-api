@@ -350,6 +350,7 @@ def show_image_with_boxes(
                     color=col,
                     ID=ID,
                     fontscale=fontscale,
+                    font_thickness=font_thickness,
                 )
         elif isinstance(
             box,
@@ -365,7 +366,10 @@ def show_image_with_boxes(
                 img1, (int(pt[0]), int(pt[1])), radius, color=(0, 255, 0), thickness=-1
             )
             bl_edge = (pt[0], pt[1])
-            add_text_to_image(img1, bl_edge, ID, fontscale=fontscale)
+            # add id
+            add_text_to_image(
+                img1, bl_edge, ID, fontscale=fontscale, font_thickness=font_thickness
+            )
         else:
             raise NotImplementedError(type(box))
         if addbox:
