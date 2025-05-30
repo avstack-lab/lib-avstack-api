@@ -59,16 +59,16 @@ class nuScenesManager(_nuManager):
     def list_scenes(self) -> List[str]:
         self.nuX.list_scenes()
 
-    def get_scene_dataset_by_name(self, scene_name) -> "nuScenesSceneDataset":
+    def get_scene_dataset_by_name(self, scene_name) -> "nuScenesDataset":
         idx = self.scene_name_to_index[scene_name]
         return self.get_scene_dataset_by_index(idx)
 
-    def get_scene_dataset_by_scene_number(self, scene_number) -> "nuScenesSceneDataset":
+    def get_scene_dataset_by_scene_number(self, scene_number) -> "nuScenesDataset":
         idx = self.scene_number_to_index[scene_number]
         return self.get_scene_dataset_by_index(idx)
 
-    def get_scene_dataset_by_index(self, scene_idx) -> "nuScenesSceneDataset":
-        return nuScenesSceneDataset(
+    def get_scene_dataset_by_index(self, scene_idx) -> "nuScenesDataset":
+        return nuScenesDataset(
             self.data_dir,
             self.split,
             self.nuX.scene[scene_idx],
@@ -77,7 +77,7 @@ class nuScenesManager(_nuManager):
         )
 
 
-class nuScenesSceneDataset(_nuBaseDataset):
+class nuScenesDataset(_nuBaseDataset):
     NAME = "nuScenes"
     CFG = {}
     CFG["num_lidar_features"] = 5
