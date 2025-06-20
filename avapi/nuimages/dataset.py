@@ -49,7 +49,7 @@ class nuImagesDataset(_nuBaseDataset):
     def get_image(self, frame, sensor):
         return super().get_image(frame, sensor)
 
-    def get_calibration(self, frame, sensor):
+    def get_calibration(self, frame, *args, **kwargs):
         return super().get_calibration(frame, None)
 
     def get_objects(self, frame, *args):
